@@ -19,8 +19,8 @@ import {
   MicrophoneIcon,
   VideoCameraIcon
 } from '@heroicons/react/24/outline';
-import Providers from '@/components/providers/Providers';
-import AppLayout from '@/components/layout/AppLayout';
+// import Providers from '@/components/providers/Providers';
+// import AppLayout from '@/components/layout/AppLayout';
 import { listingsAPI, bookingsAPI, impactAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
@@ -117,16 +117,14 @@ const HostDashboardPage = () => {
 
   if (loading) {
     return (
-      <Providers>
-        <AppLayout>
+     
           <div className="min-h-screen village-bg pt-20 flex items-center justify-center">
             <div className="text-center">
               <div className="spinner spinner-lg mx-auto mb-4"></div>
               <p className="text-gray-600">Loading your dashboard...</p>
             </div>
           </div>
-        </AppLayout>
-      </Providers>
+      
     );
   }
 
@@ -207,9 +205,8 @@ const HostDashboardPage = () => {
   ];
 
   return (
-    <Providers>
-      <AppLayout>
-        <div className="min-h-screen village-bg">
+
+        <div className="min-h-screen village-bg pt-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="mb-8">
@@ -424,8 +421,7 @@ const HostDashboardPage = () => {
             )}
           </div>
         </div>
-      </AppLayout>
-    </Providers>
+ 
   );
 };
 

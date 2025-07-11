@@ -14,7 +14,7 @@ import {
   CheckIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
+// import AppLayout from '@/components/layout/AppLayout';
 import { aiAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -85,14 +85,12 @@ const VoiceListingPage = () => {
   // Show loading state while checking authentication
   if (loading || !accessChecked) {
     return (
-      <AppLayout>
         <div className="min-h-screen village-bg pt-20 flex items-center justify-center">
           <div className="text-center">
             <div className="spinner spinner-lg mx-auto mb-4"></div>
             <p className="text-gray-600">Checking access permissions...</p>
           </div>
         </div>
-      </AppLayout>
     );
   }
 
@@ -220,7 +218,7 @@ const VoiceListingPage = () => {
   ];
 
   return (
-    <AppLayout>
+    // <AppLayout>
       <div className="min-h-screen village-bg pt-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -655,7 +653,6 @@ const VoiceListingPage = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 };
 

@@ -1,9 +1,8 @@
-// src/components/layout/SideNav.js
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   HomeIcon,
@@ -12,32 +11,26 @@ import {
   PlusIcon,
   MicrophoneIcon,
   VideoCameraIcon,
-  UserCircleIcon,
-  ArrowRightOnRectangleIcon,
-  Cog6ToothIcon,
   ChartBarIcon,
   UsersIcon,
   HeartIcon,
-  MapPinIcon,
   ChatBubbleLeftRightIcon,
   SparklesIcon,
   Bars3Icon,
   XMarkIcon,
   ChevronDownIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  BuildingOfficeIcon,
+  MapIcon
 } from '@heroicons/react/24/outline';
 
 const SideNav = () => {
-  const { user, logout, isHost, isTourist, isAdmin } = useAuth();
-  const router = useRouter();
+  const { isHost, isTourist, isAdmin } = useAuth();
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState({});
-
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
+  const [expandedMenus, setExpandedMenus] = useState({
+    'ai-tools': true // AI tools expanded by default for hosts
+  });
 
   const toggleMenu = (menuKey) => {
     setExpandedMenus(prev => ({
@@ -50,61 +43,34 @@ const SideNav = () => {
     return pathname === path || pathname.startsWith(path + '/');
   };
 
-  // Navigation items based on user type
+  // Get navigation items based on user type
   const getNavigationItems = () => {
-    const baseItems = [
-      {
-        key: 'dashboard',
-        label: 'Dashboard',
-        icon: HomeIcon,
-        href: user?.user_type === 'host' ? '/host/dashboard' : 
-              user?.user_type === 'tourist' ? '/tourist/dashboard' : 
-              '/admin/dashboard'
-      },
-      {
-        key: 'explore',
-        label: 'Explore Villages',
-        icon: MagnifyingGlassIcon,
-        href: '/listings'
-      }
-    ];
-
     if (isHost) {
       return [
-        ...baseItems,
         {
-          key: 'listings',
-          label: 'My Listings',
+          key: 'dashboard',
+          label: 'Dashboard',
           icon: HomeIcon,
-          href: '/host/listings',
-          children: [
-            { label: 'All Listings', href: '/host/listings' },
-            { label: 'Add New Listing', href: '/host/create-listing' },
-            { label: 'Manage Availability', href: '/host/availability' }
-          ]
-        },
-        {
-          key: 'bookings',
-          label: 'Bookings',
-          icon: CalendarDaysIcon,
-          href: '/host/bookings'
+          href: '/host/dashboard'
         },
         {
           key: 'ai-tools',
-          label: 'AI Tools',
+          label: '🤖 AI Tools',
           icon: SparklesIcon,
           children: [
             { 
-              label: 'Voice Listing', 
+              label: 'Voice Listing Magic', 
               href: '/ai-features/voice-listing',
               icon: MicrophoneIcon,
-              description: 'Create listings with voice'
+              description: 'Create listings with voice',
+              badge: 'NEW'
             },
             { 
-              label: 'Village Stories', 
+              label: 'Village Story Videos', 
               href: '/ai-features/village-stories',
               icon: VideoCameraIcon,
-              description: 'Generate AI videos'
+              description: 'Generate promotional videos',
+              badge: ''
             },
             { 
               label: 'Cultural Concierge', 
@@ -115,17 +81,57 @@ const SideNav = () => {
           ]
         },
         {
+          key: 'listings',
+          label: 'Properties',
+          icon: BuildingOfficeIcon,
+          children: [
+            { label: 'All Properties', href: '/host/listings', icon: BuildingOfficeIcon },
+            { label: 'Add New Property', href: '/host/create-listing', icon: PlusIcon },
+            { label: 'Manage Availability', href: '/host/availability', icon: CalendarDaysIcon }
+          ]
+        },
+        {
+          key: 'bookings',
+          label: 'Reservations',
+          icon: CalendarDaysIcon,
+          href: '/host/bookings'
+        },
+        {
           key: 'analytics',
-          label: 'Analytics',
+          label: 'Analytics & Reports',
           icon: ChartBarIcon,
           href: '/host/analytics'
+        },
+        {
+          key: 'explore',
+          label: 'Explore Marketplace',
+          icon: MapIcon,
+          href: '/listings'
         }
       ];
     }
 
     if (isTourist) {
       return [
-        ...baseItems,
+        {
+          key: 'dashboard',
+          label: 'Dashboard',
+          icon: HomeIcon,
+          href: '/tourist/dashboard'
+        },
+        {
+          key: 'ai-concierge',
+          label: '🤖 AI Cultural Guide',
+          icon: ChatBubbleLeftRightIcon,
+          href: '/ai-features/cultural-concierge',
+          badge: 'AI'
+        },
+        {
+          key: 'explore',
+          label: 'Discover Villages',
+          icon: MapIcon,
+          href: '/listings'
+        },
         {
           key: 'bookings',
           label: 'My Trips',
@@ -139,12 +145,6 @@ const SideNav = () => {
           href: '/tourist/favorites'
         },
         {
-          key: 'ai-concierge',
-          label: 'AI Cultural Guide',
-          icon: ChatBubbleLeftRightIcon,
-          href: '/ai-features/cultural-concierge'
-        },
-        {
           key: 'impact',
           label: 'My Impact',
           icon: SparklesIcon,
@@ -155,7 +155,12 @@ const SideNav = () => {
 
     if (isAdmin) {
       return [
-        ...baseItems,
+        {
+          key: 'dashboard',
+          label: 'Admin Dashboard',
+          icon: HomeIcon,
+          href: '/admin/dashboard'
+        },
         {
           key: 'users',
           label: 'User Management',
@@ -163,14 +168,14 @@ const SideNav = () => {
           href: '/admin/users'
         },
         {
-          key: 'admin-listings',
-          label: 'Manage Listings',
-          icon: HomeIcon,
+          key: 'listings',
+          label: 'Property Management',
+          icon: BuildingOfficeIcon,
           href: '/admin/listings'
         },
         {
-          key: 'admin-bookings',
-          label: 'All Bookings',
+          key: 'bookings',
+          label: 'Booking Management',
           icon: CalendarDaysIcon,
           href: '/admin/bookings'
         },
@@ -179,11 +184,17 @@ const SideNav = () => {
           label: 'Platform Analytics',
           icon: ChartBarIcon,
           href: '/admin/analytics'
+        },
+        {
+          key: 'explore',
+          label: 'Browse Platform',
+          icon: MapIcon,
+          href: '/listings'
         }
       ];
     }
 
-    return baseItems;
+    return [];
   };
 
   const navigationItems = getNavigationItems();
@@ -198,70 +209,13 @@ const SideNav = () => {
         />
       )}
 
-      {/* Side Navigation */}
-      <div className={`fixed top-0 left-0 h-full bg-white shadow-2xl z-50 transition-all duration-300 ${
-        isCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-20' : 'w-80 lg:w-72'
+      {/* Side Navigation - Clean menu only */}
+      <div className={`fixed top-16 left-0 h-[calc(100vh-4rem)] bg-white shadow-lg border-r border-gray-200 z-40 transition-all duration-300 ${
+        isCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-16' : 'w-80 lg:w-64'
       }`}>
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            {!isCollapsed && (
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">V</span>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">VillageStay</h1>
-                  <p className="text-xs text-green-600">Rural Tourism Platform</p>
-                </div>
-              </div>
-            )}
-            
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 lg:hidden"
-            >
-              {isCollapsed ? (
-                <Bars3Icon className="w-5 h-5" />
-              ) : (
-                <XMarkIcon className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* User Profile */}
-        {user && (
-          <div className="p-6 border-b border-gray-200">
-            {!isCollapsed ? (
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-lg">
-                    {user.full_name?.charAt(0)?.toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">{user.full_name}</h3>
-                  <p className="text-sm text-gray-500 truncate">{user.email}</p>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
-                    {user.user_type} Account
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold">
-                    {user.full_name?.charAt(0)?.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
+        
         {/* Navigation Items */}
-        <div className="flex-1 overflow-y-auto py-4">
+        <div className="h-full overflow-y-auto py-6">
           <nav className="px-4 space-y-2">
             {navigationItems.map((item) => (
               <div key={item.key}>
@@ -270,44 +224,66 @@ const SideNav = () => {
                   <div>
                     <button
                       onClick={() => toggleMenu(item.key)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                        isActivePath(item.href) 
-                          ? 'bg-green-100 text-green-700 border-r-2 border-green-500' 
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                        item.children.some(child => isActivePath(child.href))
+                          ? 'bg-green-100 text-green-700 shadow-sm' 
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <item.icon className="w-5 h-5" />
-                        {!isCollapsed && <span>{item.label}</span>}
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                        {!isCollapsed && (
+                          <div className="flex items-center space-x-2">
+                            <span>{item.label}</span>
+                            {item.badge && (
+                              <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {!isCollapsed && (
                         expandedMenus[item.key] ? (
-                          <ChevronDownIcon className="w-4 h-4" />
+                          <ChevronDownIcon className="w-4 h-4 text-gray-400" />
                         ) : (
-                          <ChevronRightIcon className="w-4 h-4" />
+                          <ChevronRightIcon className="w-4 h-4 text-gray-400" />
                         )
                       )}
                     </button>
                     
                     {!isCollapsed && expandedMenus[item.key] && (
-                      <div className="mt-2 ml-8 space-y-1">
+                      <div className="mt-2 ml-4 space-y-1 border-l-2 border-gray-200 pl-4">
                         {item.children.map((child, index) => (
                           <Link
                             key={index}
                             href={child.href}
-                            className={`block px-3 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                            className={`flex items-center justify-between px-4 py-2.5 rounded-lg text-sm transition-all duration-200 group ${
                               isActivePath(child.href)
-                                ? 'bg-green-50 text-green-700 font-medium'
+                                ? 'bg-green-50 text-green-700 font-medium border-l-2 border-green-500'
                                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                             }`}
                           >
-                            <div className="flex items-center space-x-2">
-                              {child.icon && <child.icon className="w-4 h-4" />}
-                              <span>{child.label}</span>
+                            <div className="flex items-center space-x-3">
+                              {child.icon && <child.icon className="w-4 h-4 flex-shrink-0" />}
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <span>{child.label}</span>
+                                  {child.badge && (
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                                      child.badge === 'NEW' ? 'bg-blue-100 text-blue-600' :
+                                      child.badge === 'HOT' ? 'bg-red-100 text-red-600' :
+                                      'bg-green-100 text-green-600'
+                                    }`}>
+                                      {child.badge}
+                                    </span>
+                                  )}
+                                </div>
+                                {child.description && (
+                                  <p className="text-xs text-gray-500 mt-0.5">{child.description}</p>
+                                )}
+                              </div>
                             </div>
-                            {child.description && (
-                              <p className="text-xs text-gray-500 mt-1">{child.description}</p>
-                            )}
                           </Link>
                         ))}
                       </div>
@@ -317,45 +293,35 @@ const SideNav = () => {
                   // Regular menu item
                   <Link
                     href={item.href}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
                       isActivePath(item.href) 
-                        ? 'bg-green-100 text-green-700 border-r-2 border-green-500' 
+                        ? 'bg-green-100 text-green-700 shadow-sm' 
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
-                    {!isCollapsed && <span>{item.label}</span>}
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    {!isCollapsed && (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <span>{item.label}</span>
+                        {item.badge && (
+                          <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </Link>
                 )}
               </div>
             ))}
           </nav>
         </div>
-
-        {/* Bottom Actions */}
-        <div className="border-t border-gray-200 p-4 space-y-2">
-          <Link
-            href="/profile"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-          >
-            <UserCircleIcon className="w-5 h-5" />
-            {!isCollapsed && <span>Profile Settings</span>}
-          </Link>
-          
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-200"
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            {!isCollapsed && <span>Sign Out</span>}
-          </button>
-        </div>
       </div>
 
       {/* Mobile Toggle Button */}
       <button
         onClick={() => setIsCollapsed(false)}
-        className={`fixed top-4 left-4 z-40 p-2 bg-white rounded-lg shadow-lg lg:hidden ${
+        className={`fixed top-20 left-4 z-30 p-2 bg-white rounded-lg shadow-lg lg:hidden ${
           isCollapsed ? 'block' : 'hidden'
         }`}
       >

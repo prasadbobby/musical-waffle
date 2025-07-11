@@ -1,4 +1,3 @@
-// src/app/layout.client.js
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -11,25 +10,25 @@ import AppLayoutWithSideNav from '@/components/layout/AppLayoutWithSideNav';
 export default function ClientLayout({ children }) {
   const pathname = usePathname();
   
-  // Routes that should use the regular navbar instead of sidenav
-  const useRegularNavRoutes = [
+  // Only these routes should use regular navbar (public pages)
+  const publicRoutes = [
     '/',
     '/auth/login',
     '/auth/register',
-    '/listings',
-    '/listings/',
     '/about',
-    '/contact'
+    '/contact',
+    '/privacy',
+    '/terms'
   ];
 
-  const shouldUseRegularNav = useRegularNavRoutes.some(route => 
-    pathname === route || (route.endsWith('/') && pathname.startsWith(route))
-  );
+  // Check if current route is a public route or a public listing page
+  const isPublicRoute = publicRoutes.includes(pathname) || 
+    (pathname.startsWith('/listings') && !pathname.includes('/host/') && !pathname.includes('/admin/'));
 
   return (
     <AuthProvider>
-      {shouldUseRegularNav ? (
-        // Regular layout for public pages
+      {isPublicRoute ? (
+        // Regular layout for public pages only
         <div className="min-h-screen flex flex-col village-bg">
           <Navbar />
           <main className="flex-1">
@@ -38,7 +37,7 @@ export default function ClientLayout({ children }) {
           <Footer />
         </div>
       ) : (
-        // Side navigation layout for authenticated areas
+        // Sidebar layout for all authenticated areas (dashboard, AI features, etc.)
         <AppLayoutWithSideNav>
           {children}
         </AppLayoutWithSideNav>

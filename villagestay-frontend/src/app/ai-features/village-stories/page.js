@@ -1,4 +1,3 @@
-// src/app/ai-features/village-stories/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,7 +8,7 @@ import {
   PhotoIcon,
   SparklesIcon,
   PlayIcon,
-  DownloadIcon,
+  ArrowDownTrayIcon, // Fixed import
   ShareIcon,
   EyeIcon,
   ClockIcon,
@@ -17,7 +16,7 @@ import {
   ExclamationCircleIcon,
   ChevronLeftIcon
 } from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
+// import AppLayout from '@/components/layout/AppLayout';
 import { aiAPI, listingsAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -158,27 +157,24 @@ const VillageStoriesPage = () => {
     setProgress(0);
   };
 
-  // Show loading state while checking authentication
   if (loading || !accessChecked) {
     return (
-      <AppLayout>
-        <div className="min-h-screen village-bg pt-20 flex items-center justify-center">
-          <div className="text-center">
-            <div className="spinner spinner-lg mx-auto mb-4"></div>
-            <p className="text-gray-600">Checking access permissions...</p>
-          </div>
+      <div className="min-h-screen village-bg pt-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner spinner-lg mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking access permissions...</p>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   // Don't render the component if user doesn't have access
   if (!isAuthenticated || !isHost) {
-    return null; // This will be handled by the useEffect redirect
+    return null;
   }
 
   return (
-    <AppLayout>
+    // <AppLayout>
       <div className="min-h-screen village-bg pt-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -523,7 +519,7 @@ const VillageStoriesPage = () => {
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button className="btn-primary flex items-center justify-center">
-                      <DownloadIcon className="w-5 h-5 mr-2" />
+                      <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
                       Download Video
                     </button>
                     <button className="btn-secondary flex items-center justify-center">
@@ -640,7 +636,7 @@ const VillageStoriesPage = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
+    // </AppLayout>
   );
 };
 

@@ -13,8 +13,8 @@ import {
   MicrophoneIcon,
   StopIcon
 } from '@heroicons/react/24/outline';
-import Providers from '@/components/providers/Providers';
-import AppLayout from '@/components/layout/AppLayout';
+// import Providers from '@/components/providers/Providers';
+// import AppLayout from '@/components/layout/AppLayout';
 import { aiAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -163,8 +163,8 @@ const CulturalConciergePage = () => {
   };
 
   return (
-    <Providers>
-      <AppLayout>
+    // <Providers>
+    //   <AppLayout>
         <div className="min-h-screen village-bg pt-20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
@@ -478,8 +478,8 @@ const CulturalConciergePage = () => {
             </div>
           </div>
         </div>
-      </AppLayout>
-    </Providers>
+    //   </AppLayout>
+    // </Providers>
   );
 };
 
