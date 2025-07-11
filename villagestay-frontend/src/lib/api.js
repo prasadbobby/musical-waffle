@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-// Create axios instance
+// Create axios instance for regular API calls
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -10,7 +10,13 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Create axios instance for file uploads (without Content-Type header)
+const apiWithFiles = axios.create({
+  baseURL: API_BASE_URL,
+  // Don't set Content-Type for file uploads - let browser handle it
+});
+
+// Request interceptor to add auth token for regular API
 api.interceptors.request.use(
   (config) => {
     const token = typeof window !== 'undefined' ? 
@@ -24,20 +30,35 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Clear token and redirect to login on unauthorized
-      if (typeof window !== 'undefined') {
-        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        window.location.href = '/auth/login';
-      }
+// Request interceptor for file uploads
+apiWithFiles.interceptors.request.use(
+  (config) => {
+    const token = typeof window !== 'undefined' ? 
+      document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] : null;
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return Promise.reject(error);
-  }
+    return config;
+  },
+  (error) => Promise.reject(error)
 );
+
+// Response interceptor for error handling (for both instances)
+const responseInterceptor = (response) => response;
+const errorInterceptor = (error) => {
+  if (error.response?.status === 401) {
+    // Clear token and redirect to login on unauthorized
+    if (typeof window !== 'undefined') {
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      window.location.href = '/auth/login';
+    }
+  }
+  return Promise.reject(error);
+};
+
+api.interceptors.response.use(responseInterceptor, errorInterceptor);
+apiWithFiles.interceptors.response.use(responseInterceptor, errorInterceptor);
 
 // Auth API
 export const authAPI = {
@@ -64,6 +85,7 @@ export const listingsAPI = {
   delete: (id) => api.delete(`/api/listings/${id}`),
   search: (params) => api.get('/api/listings/search', { params }),
   checkAvailability: (id, params) => api.get(`/api/listings/${id}/availability`, { params }),
+  updateAvailability: (id, data) => api.post(`/api/listings/${id}/availability`, data),
   getHostListings: (hostId, params) => api.get(`/api/listings/host/${hostId}`, { params }),
 };
 
@@ -79,8 +101,8 @@ export const bookingsAPI = {
 
 // AI Features API
 export const aiAPI = {
-  // Voice to Listing
-  voiceToListing: (data) => api.post('/api/ai-features/voice-to-listing', data),
+  // Voice to Listing - use the file upload instance
+  voiceToListing: (data) => apiWithFiles.post('/api/ai-features/voice-to-listing', data),
   createListingFromVoice: (data) => api.post('/api/ai-features/create-listing-from-voice', data),
   demoVoiceTranscription: (data) => api.post('/api/ai-features/demo/voice-transcription', data),
   

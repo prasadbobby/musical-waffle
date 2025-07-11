@@ -159,58 +159,74 @@ const VoiceListingPage = () => {
     setCustomEdits({});
   };
 
-  const processVoiceToListing = async () => {
-    if (!audioBlob) {
-      toast.error('Please record audio first');
-      return;
+const processVoiceToListing = async () => {
+  if (!audioBlob) {
+    toast.error('Please record audio first');
+    return;
+  }
+
+  setIsProcessing(true);
+  setCurrentStep(2);
+
+  try {
+    console.log('Processing audio blob:', audioBlob.size, 'bytes');
+    
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('audio_data', audioBlob, 'voice_recording.webm');
+    formData.append('language', selectedLanguage);
+
+    console.log('Sending voice data to backend...');
+    
+    // Get token from context or cookie
+    const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+    
+    // Use fetch API for file upload
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/ai-features/voice-to-listing`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+        // Intentionally NOT setting Content-Type - let browser handle FormData
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+      throw new Error(errorData.error || `Server error: ${response.status}`);
     }
 
-    setIsProcessing(true);
-    setCurrentStep(2);
-
-    try {
-      console.log('Processing audio blob:', audioBlob.size, 'bytes');
-      
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('audio_data', audioBlob, 'voice_recording.webm');
-      formData.append('language', selectedLanguage);
-
-      console.log('Sending voice data to backend...');
-      const response = await aiAPI.voiceToListing(formData);
-      
-      console.log('Voice processing response:', response.data);
-      
-      const result = response.data.result;
-      
-      if (result.processing_status === 'failed') {
-        throw new Error(result.error || 'Voice processing failed');
-      }
-      
-      setTranscription(result.transcribed_text);
-      setGeneratedListing(result);
-      setCurrentStep(3);
-      
-      // Pre-populate custom edits with generated data
-      const enhanced = result.enhanced_listing || {};
-      setCustomEdits({
-        title: enhanced.title || '',
-        description: enhanced.description || '',
-        property_type: enhanced.property_type || 'homestay',
-        price_per_night: result.pricing_intelligence?.base_price_per_night || 2000,
-        max_guests: enhanced.max_guests || 4
-      });
-      
-      toast.success('Voice successfully converted to listing!');
-    } catch (error) {
-      console.error('Voice processing failed:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to process voice';
-      toast.error(errorMessage);
-      setCurrentStep(1);
-    } finally {
-      setIsProcessing(false);
+    const result = await response.json();
+    console.log('Voice processing response:', result);
+    
+    if (result.result?.processing_status === 'failed') {
+      throw new Error(result.result.error || 'Voice processing failed');
     }
-  };
+    
+    setTranscription(result.result.transcribed_text);
+    setGeneratedListing(result.result);
+    setCurrentStep(3);
+    
+    // Pre-populate custom edits with generated data
+    const enhanced = result.result.enhanced_listing || {};
+    setCustomEdits({
+      title: enhanced.title || '',
+      description: enhanced.description || '',
+      property_type: enhanced.property_type || 'homestay',
+      price_per_night: result.result.pricing_intelligence?.base_price_per_night || 2000,
+      max_guests: enhanced.max_guests || 4
+    });
+    
+    toast.success('Voice successfully converted to listing!');
+  } catch (error) {
+    console.error('Voice processing failed:', error);
+    const errorMessage = error.message || 'Failed to process voice';
+    toast.error(errorMessage);
+    setCurrentStep(1);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const createListingFromVoice = async () => {
     if (!generatedListing) {

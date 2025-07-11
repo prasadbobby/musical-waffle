@@ -123,15 +123,18 @@ def voice_to_listing():
             language = request.form.get('language', 'hi')
             audio_file = request.files.get('audio_data')
             
-            if audio_file:
-                # Read audio file content
-                audio_data = audio_file.read()
-                # Convert to base64 for processing
-                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-            else:
-                return jsonify({"error": "No audio file provided"}), 400
+            if not audio_file:
+                return jsonify({"error": "Audio data is required"}), 400
+                
+            # Read audio file content
+            audio_data = audio_file.read()
+            print(f"Received audio file: {audio_file.filename}, size: {len(audio_data)} bytes")
+            
+            # Convert to base64 for processing
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            
         else:
-            # Handle JSON data
+            # Handle JSON data (fallback)
             data = request.get_json()
             if not data:
                 return jsonify({"error": "No data provided"}), 400
