@@ -335,18 +335,7 @@ const SideNav = () => {
         </nav>
       </div>
 
-      {/* Bottom Section - AI Feature Highlight */}
-      {/* <div className="absolute bottom-0 left-0 right-0 px-6 py-4 bg-gradient-to-t from-gray-100 to-transparent">
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200">
-          <div className="flex items-center space-x-2 mb-2">
-            <SparklesIcon className="w-5 h-5 text-blue-500" />
-            <span className="text-sm font-semibold text-gray-900">AI-Powered Experience</span>
-          </div>
-          <p className="text-xs text-gray-600 leading-relaxed">
-            Leverage cutting-edge AI to enhance your rural tourism experience with smart recommendations and automated content creation.
-          </p>
-        </div>
-      </div> */}
+     
     </div>
   );
 };
