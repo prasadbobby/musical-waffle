@@ -257,7 +257,7 @@ const AppLayoutWithSideNav = ({ children }) => {
           {children}
         </main>
         
-        <Footer />
+        {/* <Footer /> */}
       </div>
     </div>
   );

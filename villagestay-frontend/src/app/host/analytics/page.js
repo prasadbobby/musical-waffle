@@ -10,7 +10,7 @@ import {
   CalendarDaysIcon,
   EyeIcon,
   UsersIcon,
-  TrendingUpIcon
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/utils';
@@ -82,7 +82,7 @@ const HostAnalyticsPage = () => {
     {
       label: 'Occupancy Rate',
       value: `${analytics.occupancyRate}%`,
-      icon: TrendingUpIcon,
+      icon: ArrowTrendingUpIcon,
       color: 'from-orange-500 to-orange-600',
       change: '+8% this month'
     }
