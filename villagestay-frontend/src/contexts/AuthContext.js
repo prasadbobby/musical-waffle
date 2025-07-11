@@ -24,6 +24,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check for stored token on app load
     const storedToken = Cookies.get('token');
+    console.log('Stored token on load:', storedToken); // Debug log
+    
     if (storedToken) {
       setToken(storedToken);
       fetchUserProfile(storedToken);
@@ -34,8 +36,11 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserProfile = async (authToken) => {
     try {
+      console.log('Fetching user profile with token:', authToken); // Debug log
       const response = await authAPI.getProfile(authToken);
       const userData = response.data;
+      
+      console.log('User data received:', userData); // Debug log
       
       // Validate user data
       if (!userData.user_type || !['tourist', 'host', 'admin'].includes(userData.user_type)) {
@@ -43,9 +48,13 @@ export const AuthProvider = ({ children }) => {
       }
       
       setUser(userData);
+      console.log('User set successfully:', userData); // Debug log
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
-      logout();
+      // Clear invalid tokens
+      Cookies.remove('token');
+      setToken(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -53,8 +62,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('Attempting login for:', email); // Debug log
       const response = await authAPI.login(email, password);
       const { access_token, user: userData } = response.data;
+      
+      console.log('Login response:', { access_token, userData }); // Debug log
       
       // Validate user data
       if (!userData.user_type || !['tourist', 'host', 'admin'].includes(userData.user_type)) {
@@ -65,11 +77,19 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       
       // Store token in cookie (expires in 30 days)
-      Cookies.set('token', access_token, { expires: 30, secure: true, sameSite: 'strict' });
+      Cookies.set('token', access_token, { 
+        expires: 30, 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      });
+      
+      console.log('Token stored, user set:', userData); // Debug log
       
       toast.success(`Welcome back, ${userData.full_name}!`);
       return { success: true, user: userData };
     } catch (error) {
+      console.error('Login error:', error); // Debug log
       const message = error.response?.data?.error || 'Login failed';
       toast.error(message);
       return { success: false, error: message };
@@ -94,10 +114,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    Cookies.remove('token');
-    toast.success('Logged out successfully');
+    try {
+      console.log('Logging out user'); // Debug log
+      
+      // Clear all authentication state
+      setUser(null);
+      setToken(null);
+      
+      // Remove token from cookies
+      Cookies.remove('token', { path: '/' });
+      
+      // Clear any other stored auth data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        sessionStorage.clear();
+      }
+      
+      toast.success('Logged out successfully');
+      
+      console.log('Logout completed'); // Debug log
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const updateProfile = async (profileData) => {
@@ -167,7 +207,7 @@ export const AuthProvider = ({ children }) => {
     canAccessRoute,
     
     // User type checks
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!token,
     isHost: user?.user_type === 'host',
     isTourist: user?.user_type === 'tourist',
     isAdmin: user?.user_type === 'admin',
@@ -188,7 +228,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Add the ACCESS_RIGHTS constant here or import it
+// ACCESS_RIGHTS constant
 const ACCESS_RIGHTS = {
   tourist: {
     can_browse_listings: true,

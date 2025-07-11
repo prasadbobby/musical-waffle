@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import SideNav from './SideNav';
@@ -10,17 +11,64 @@ import {
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
   BellIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  Bars3Icon
 } from '@heroicons/react/24/outline';
 
 const AppLayoutWithSideNav = ({ children }) => {
   const { isAuthenticated, loading, user, logout } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
+  const dropdownRef = useRef(null);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProfileMenu]);
+
+  const handleLogout = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      setIsLoggingOut(true);
+      setShowProfileMenu(false);
+      
+      console.log('Logout clicked'); // Debug log
+      
+      // Call logout function
+      logout();
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force navigation even if logout fails
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleProfileMenuClick = (e) => {
+    e.stopPropagation();
+    setShowProfileMenu(!showProfileMenu);
+  };
+
+  const handleMenuItemClick = (path) => {
+    setShowProfileMenu(false);
+    router.push(path);
   };
 
   if (loading) {
@@ -50,72 +98,96 @@ const AppLayoutWithSideNav = ({ children }) => {
       <SideNav />
       
       {/* Main Content Area */}
-      <div className="lg:ml-64"> {/* Adjusted for narrower sidebar */}
-        {/* Top Header with Branding and Profile */}
+      <div className="lg:ml-72">
+        {/* Top Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              {/* Left - Brand */}
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">V</span>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">VillageStay</h1>
-                  <p className="text-xs text-green-600 font-medium">AI-Powered Platform</p>
-                </div>
+              
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setShowMobileNav(!showMobileNav)}
+                className="lg:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <Bars3Icon className="w-6 h-6" />
+              </button>
+
+              {/* Page Title */}
+              <div className="hidden lg:block">
+                <h2 className="text-xl font-semibold text-gray-900">Dashboard</h2>
+                <p className="text-sm text-gray-500">Welcome back to your workspace</p>
               </div>
 
-              {/* Right - User Info and Profile */}
+              {/* Right Side - Notifications & Profile */}
               <div className="flex items-center space-x-4">
-                {/* User Info */}
-                <div className="hidden sm:flex items-center space-x-3 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">
-                      {user?.full_name?.charAt(0)?.toUpperCase()}
-                    </span>
+                
+                {/* Quick Actions (for hosts) */}
+                {user?.user_type === 'host' && (
+                  <div className="hidden md:flex items-center space-x-2">
+                    <Link 
+                      href="/host/create-listing"
+                      className="px-3 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                    >
+                      + Add Listing
+                    </Link>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900 truncate max-w-32">
-                      {user?.full_name}
-                    </p>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
-                      {user?.user_type}
-                    </span>
-                  </div>
-                </div>
+                )}
 
                 {/* Notifications */}
-                <button className="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-                  <BellIcon className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-400"></span>
-                </button>
-                
-                {/* Profile Dropdown */}
                 <div className="relative">
+                  <button className="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                    <BellIcon className="w-6 h-6" />
+                    <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-400"></span>
+                  </button>
+                </div>
+
+                {/* User Profile Dropdown */}
+                <div className="relative" ref={dropdownRef}>
                   <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center space-x-2 p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                    onClick={handleProfileMenuClick}
+                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    disabled={isLoggingOut}
                   >
-                    <Cog6ToothIcon className="w-5 h-5" />
-                    <ChevronDownIcon className="w-4 h-4" />
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {user?.full_name?.charAt(0)?.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-sm font-semibold text-gray-900 truncate max-w-32">
+                        {user?.full_name}
+                      </p>
+                      <p className="text-xs text-gray-500 capitalize">{user?.user_type}</p>
+                    </div>
+                    <ChevronDownIcon className="w-4 h-4 text-gray-400" />
                   </button>
                   
-                  {/* Dropdown Menu */}
+                  {/* Profile Dropdown Menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
-                      <div className="py-2">
+                    <div 
+                      className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="py-3">
+                        
                         {/* Profile Header */}
-                        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                        <div className="px-4 py-3 border-b border-gray-100">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
-                              <span className="text-white font-semibold">
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center">
+                              <span className="text-white font-semibold text-lg">
                                 {user?.full_name?.charAt(0)?.toUpperCase()}
                               </span>
                             </div>
-                            <div>
+                            <div className="flex-1">
                               <p className="text-sm font-semibold text-gray-900">{user?.full_name}</p>
                               <p className="text-xs text-gray-500">{user?.email}</p>
+                              <span className={`inline-flex items-center mt-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                user?.user_type === 'host' ? 'bg-blue-100 text-blue-800' :
+                                user?.user_type === 'tourist' ? 'bg-purple-100 text-purple-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {user?.user_type?.charAt(0)?.toUpperCase()}{user?.user_type?.slice(1)} Account
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -123,48 +195,52 @@ const AppLayoutWithSideNav = ({ children }) => {
                         {/* Menu Items */}
                         <div className="py-2">
                           <button
-                            onClick={() => {
-                              router.push('/profile');
-                              setShowProfileMenu(false);
-                            }}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200"
+                            type="button"
+                            onClick={() => handleMenuItemClick('/profile')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-200 text-left"
                           >
-                            <UserCircleIcon className="w-5 h-5" />
-                            <div className="text-left">
+                            <UserCircleIcon className="w-5 h-5 flex-shrink-0" />
+                            <div>
                               <div className="font-medium">Profile Settings</div>
-                              <div className="text-xs text-gray-500">Manage your account</div>
+                              <div className="text-xs text-gray-500">Manage your account details</div>
                             </div>
                           </button>
                           
                           <button
-                            onClick={() => {
-                              router.push('/settings');
-                              setShowProfileMenu(false);
-                            }}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                            type="button"
+                            onClick={() => handleMenuItemClick('/settings')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 text-left"
                           >
-                            <Cog6ToothIcon className="w-5 h-5" />
-                            <div className="text-left">
+                            <Cog6ToothIcon className="w-5 h-5 flex-shrink-0" />
+                            <div>
                               <div className="font-medium">Account Settings</div>
                               <div className="text-xs text-gray-500">Privacy & preferences</div>
                             </div>
                           </button>
                         </div>
                         
-                        {/* Logout */}
-                        <div className="border-t border-gray-100">
+                        {/* Logout Section */}
+                        <div className="border-t border-gray-100 pt-2">
                           <button
-                            onClick={() => {
-                              handleLogout();
-                              setShowProfileMenu(false);
-                            }}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                            type="button"
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left"
                           >
-                            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                            <div className="text-left">
-                              <div className="font-medium">Sign Out</div>
-                              <div className="text-xs text-red-500">End your session</div>
+                            <ArrowRightOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+                            <div>
+                              <div className="font-medium">
+                                {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+                              </div>
+                              <div className="text-xs text-red-500">
+                                {isLoggingOut ? 'Please wait...' : 'End your session'}
+                              </div>
                             </div>
+                            {isLoggingOut && (
+                              <div className="ml-auto">
+                                <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin"></div>
+                              </div>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -183,14 +259,6 @@ const AppLayoutWithSideNav = ({ children }) => {
         
         <Footer />
       </div>
-
-      {/* Click outside to close dropdown */}
-      {showProfileMenu && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setShowProfileMenu(false)}
-        />
-      )}
     </div>
   );
 };

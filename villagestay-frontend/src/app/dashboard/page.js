@@ -7,14 +7,18 @@ import { useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 
 const DashboardPage = () => {
-  const { user, isAuthenticated, loading, isHost, isTourist, isAdmin } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    console.log('Dashboard page - Auth state:', { isAuthenticated, user, loading }); // Debug log
+    
     if (!loading) {
       if (!isAuthenticated) {
+        console.log('Not authenticated, redirecting to login'); // Debug log
         router.push('/auth/login');
-      } else {
+      } else if (user) {
+        console.log('Authenticated user, redirecting based on type:', user.user_type); // Debug log
         // Redirect based on user type with proper verification
         switch (user.user_type) {
           case 'host':
