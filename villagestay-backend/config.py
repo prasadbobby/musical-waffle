@@ -14,10 +14,10 @@ class Config:
     
     # Azure OpenAI Configuration
     AZURE_WHISPER_ENDPOINT = os.environ.get('AZURE_WHISPER_ENDPOINT') or 'https://oai-codecuffs.openai.azure.com/openai/deployments/whisper/audio/transcriptions'
-    AZURE_WHISPER_API_KEY = os.environ.get('AZURE_WHISPER_API_KEY') or 'FDVTHdd3ajvAsE4B5y4xFAKigDS6h9IeoSAlAFnF73YBOGmi6T6nJQQJ99BFAC77bzfXJ3w3AAABACOGLyiB'
+    AZURE_WHISPER_API_KEY = os.environ.get('AZURE_WHISPER_API_KEY')
     AZURE_WHISPER_API_VERSION = os.environ.get('AZURE_WHISPER_API_VERSION') or '2024-12-01-preview'
     
     AZURE_GPT_ENDPOINT = os.environ.get('AZURE_GPT_ENDPOINT') or 'https://codecuffs1.openai.azure.com/'
-    AZURE_GPT_API_KEY = os.environ.get('AZURE_GPT_API_KEY') or '3cfpjX7sdez3Cye9JZM3uQX8CI0mKyPHgfJGKntzmv8QRAUjImsaJQQJ99BFACYeBjFXJ3w3AAABACOGq8j3'
+    AZURE_GPT_API_KEY = os.environ.get('AZURE_GPT_API_KEY')
     AZURE_GPT_API_VERSION = os.environ.get('AZURE_GPT_API_VERSION') or '2024-12-01-preview'
     AZURE_GPT_DEPLOYMENT = os.environ.get('AZURE_GPT_DEPLOYMENT') or 'gpt-4o'
