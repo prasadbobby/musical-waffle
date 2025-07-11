@@ -1,6 +1,63 @@
 import random
 import string
 from config import Config
+from functools import wraps
+from flask import request, jsonify
+from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+from database import mongo
+from bson import ObjectId
+
+def require_user_type(*allowed_types):
+    """Decorator to require specific user types"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            verify_jwt_in_request()
+            
+            user_id = get_jwt_identity()
+            user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+            
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+            
+            if user['user_type'] not in allowed_types:
+                return jsonify({
+                    "error": f"Access denied. Required user type: {' or '.join(allowed_types)}"
+                }), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def require_admin(f):
+    """Decorator to require admin privileges"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        verify_jwt_in_request()
+        
+        user_id = get_jwt_identity()
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        
+        if not user or user['user_type'] != 'admin':
+            return jsonify({"error": "Admin privileges required"}), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+def require_host(f):
+    """Decorator to require host privileges"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        verify_jwt_in_request()
+        
+        user_id = get_jwt_identity()
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        
+        if not user or user['user_type'] != 'host':
+            return jsonify({"error": "Host account required"}), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
 
 def generate_otp(length=6):
     """Generate random OTP"""

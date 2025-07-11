@@ -1,20 +1,49 @@
+// src/app/layout.client.js
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import AppLayoutWithSideNav from '@/components/layout/AppLayoutWithSideNav';
 
 export default function ClientLayout({ children }) {
+  const pathname = usePathname();
+  
+  // Routes that should use the regular navbar instead of sidenav
+  const useRegularNavRoutes = [
+    '/',
+    '/auth/login',
+    '/auth/register',
+    '/listings',
+    '/listings/',
+    '/about',
+    '/contact'
+  ];
+
+  const shouldUseRegularNav = useRegularNavRoutes.some(route => 
+    pathname === route || (route.endsWith('/') && pathname.startsWith(route))
+  );
+
   return (
     <AuthProvider>
-      <div className="min-h-screen flex flex-col village-bg">
-        <Navbar />
-        <main className="flex-1">
+      {shouldUseRegularNav ? (
+        // Regular layout for public pages
+        <div className="min-h-screen flex flex-col village-bg">
+          <Navbar />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      ) : (
+        // Side navigation layout for authenticated areas
+        <AppLayoutWithSideNav>
           {children}
-        </main>
-        <Footer />
-      </div>
+        </AppLayoutWithSideNav>
+      )}
+      
       <Toaster 
         position="top-right"
         toastOptions={{

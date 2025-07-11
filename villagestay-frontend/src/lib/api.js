@@ -29,8 +29,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Redirect to login on unauthorized
+      // Clear token and redirect to login on unauthorized
       if (typeof window !== 'undefined') {
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         window.location.href = '/auth/login';
       }
     }
@@ -123,6 +124,17 @@ export const adminAPI = {
   rejectListing: (id, data) => api.post(`/api/admin/listings/${id}/reject`, data),
   getBookings: (params) => api.get('/api/admin/bookings', { params }),
   getAnalytics: (params) => api.get('/api/admin/analytics', { params }),
+  // User management
+  suspendUser: (userId) => api.post(`/api/admin/users/${userId}/suspend`),
+  activateUser: (userId) => api.post(`/api/admin/users/${userId}/activate`),
+  deleteUser: (userId) => api.delete(`/api/admin/users/${userId}`),
+  
+  // Listing management  
+  getListingDetails: (listingId) => api.get(`/api/admin/listings/${listingId}`),
+  
+  // System health
+  getSystemHealth: () => api.get('/api/admin/system/health'),
+  getSystemLogs: (params) => api.get('/api/admin/system/logs', { params }),
 };
 
 export default api;
