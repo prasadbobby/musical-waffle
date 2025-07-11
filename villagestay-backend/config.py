@@ -12,11 +12,11 @@ class Config:
     UPLOAD_FOLDER = 'uploads'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     
-    # Azure OpenAI Configuration
-    AZURE_WHISPER_ENDPOINT = os.environ.get('AZURE_WHISPER_ENDPOINT') or 'https://oai-codecuffs.openai.azure.com/openai/deployments/whisper/audio/transcriptions'
-    AZURE_WHISPER_API_KEY = os.environ.get('AZURE_WHISPER_API_KEY')
-    AZURE_WHISPER_API_VERSION = os.environ.get('AZURE_WHISPER_API_VERSION') or '2024-12-01-preview'
+    # Google Cloud Speech-to-Text Configuration
+    GOOGLE_CLOUD_PROJECT_ID = os.environ.get('GOOGLE_CLOUD_PROJECT_ID')
+    GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')  # Path to service account JSON
     
+    # Azure OpenAI Configuration (keeping for GPT enhancement)
     AZURE_GPT_ENDPOINT = os.environ.get('AZURE_GPT_ENDPOINT') or 'https://codecuffs1.openai.azure.com/'
     AZURE_GPT_API_KEY = os.environ.get('AZURE_GPT_API_KEY')
     AZURE_GPT_API_VERSION = os.environ.get('AZURE_GPT_API_VERSION') or '2024-12-01-preview'

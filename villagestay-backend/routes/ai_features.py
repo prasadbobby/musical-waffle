@@ -103,8 +103,7 @@ def get_village_story_status(generation_id):
    except Exception as e:
        return jsonify({"error": str(e)}), 500
 
-# ============ FEATURE 2: VOICE-TO-LISTING MAGIC ============
-
+# ============ FEATURE 2: VOICE-TO-LISTING MAGIC (GOOGLE SPEECH) ============
 
 @ai_features_bp.route('/voice-to-listing', methods=['POST'])
 @jwt_required()
@@ -154,8 +153,8 @@ def voice_to_listing():
         
         print(f"Processing voice input in language: {language}")
         
-        # Process voice to listing
-        listing_result = voice_to_listing_magic(audio_base64, language, user_id)
+        # Process voice to listing using Google Speech-to-Text + Gemini
+        listing_result = voice_to_listing_magic_google(audio_base64, language, user_id)
         
         # Save the voice processing record
         voice_record = {
@@ -181,54 +180,58 @@ def voice_to_listing():
         print(f"Voice processing error: {str(e)}")
         return jsonify({"error": f"Voice processing failed: {str(e)}"}), 500
 
-# Also update the voice_to_listing_magic function:
-def voice_to_listing_magic(audio_data, language="hi", host_id=None):
-    """Convert voice recording to professional listing"""
+def voice_to_listing_magic_google(audio_data, language="hi", host_id=None):
+    """Convert voice recording to professional listing using Google Speech-to-Text + Gemini"""
     
     try:
-        # Step 1: Convert speech to text (enhanced mock implementation)
-        transcribed_text = transcribe_audio_enhanced(audio_data, language)
+        print(f"🎤 Processing voice input with Google Speech-to-Text + Gemini in language: {language}")
         
-        # Step 2: Enhance with Gemini AI
-        enhancement_prompt = f"""
-        A host has described their property in {language}. Create a professional listing:
-        
-        Original Description: "{transcribed_text}"
-        
-        Generate a comprehensive listing with:
-        1. Catchy title (5-8 words)
-        2. Professional description (150-200 words) highlighting authentic rural experience
-        3. List of amenities (based on description + typical for this property type)
-        4. Property type (homestay, farmstay, village house, eco-lodge)
-        5. Suggested pricing range per night
-        6. House rules (3-4 culturally appropriate rules)
-        7. Unique selling points
-        8. Sustainability features mentioned or implied
-        
-        Maintain cultural authenticity and local charm. Format as JSON.
-        """
-        
+        # Step 1: Real speech to text transcription using Google Speech-to-Text
         try:
-            enhanced_content = call_gemini_api(enhancement_prompt)
-            listing_data = json.loads(enhanced_content)
-        except:
-            # Fallback structure if JSON parsing fails
-            listing_data = {
-                "title": "Authentic Rural Experience",
-                "description": transcribed_text,
-                "amenities": ["Home-cooked meals", "Local guide", "Wi-Fi"],
-                "property_type": "homestay",
-                "pricing_suggestion": "₹1500-2500",
-                "house_rules": ["Respect local customs", "No smoking indoors"],
-                "unique_features": ["Traditional architecture", "Organic farming"],
-                "sustainability_features": ["Local sourcing", "Traditional cooking"]
-            }
+            from utils.google_speech_utils import transcribe_audio_google_speech
+            
+            # Direct call to Google Speech-to-Text - NO FALLBACKS
+            result = transcribe_audio_google_speech(audio_data, language)
+            transcribed_text = result["text"]
+            confidence = result["confidence"]
+            
+            print(f"✅ Google Speech transcription successful: {transcribed_text}")
+            print(f"🎯 Confidence: {confidence:.2f}")
+            
+            # Verify we got actual transcription (not empty)
+            if not transcribed_text or len(transcribed_text.strip()) == 0:
+                raise Exception("Google Speech returned empty transcription")
+                
+        except Exception as transcription_error:
+            print(f"❌ Google Speech transcription failed: {transcription_error}")
+            raise Exception(f"Real audio transcription failed: {str(transcription_error)}")
+        
+        # Step 2: Enhance with Gemini API
+        try:
+            from utils.google_speech_utils import enhance_listing_with_gemini
+            listing_data = enhance_listing_with_gemini(transcribed_text, language)
+            print(f"✅ Gemini enhancement successful")
+        except Exception as e:
+            print(f"❌ Gemini enhancement failed: {e}")
+            raise Exception(f"Listing enhancement failed: {str(e)}")
         
         # Step 3: Generate pricing intelligence
-        pricing_intel = generate_smart_pricing(listing_data, language)
+        try:
+            from utils.ai_utils import generate_smart_pricing
+            pricing_intel = generate_smart_pricing(listing_data, language)
+            print(f"💰 Pricing generated: {pricing_intel}")
+        except Exception as pricing_error:
+            print(f"❌ Pricing generation failed: {pricing_error}")
+            raise Exception(f"Pricing generation failed: {str(pricing_error)}")
         
         # Step 4: Create multi-language versions
-        translations = create_multilingual_listing(listing_data, language)
+        try:
+            from utils.ai_utils import create_multilingual_listing
+            translations = create_multilingual_listing(listing_data, language)
+            print(f"🌍 Translations created: {len(translations)} languages")
+        except Exception as translation_error:
+            print(f"❌ Translation failed: {translation_error}")
+            translations = {language: listing_data}
         
         return {
             "original_audio_language": language,
@@ -237,35 +240,13 @@ def voice_to_listing_magic(audio_data, language="hi", host_id=None):
             "pricing_intelligence": pricing_intel,
             "translations": translations,
             "processing_status": "completed",
-            "confidence_score": 0.95
+            "confidence_score": confidence,
+            "transcription_source": "google_speech_to_text"
         }
         
     except Exception as e:
-        print(f"Voice processing error: {str(e)}")
-        return {
-            "error": str(e),
-            "processing_status": "failed"
-        }
-
-def transcribe_audio_enhanced(audio_data, language):
-    """Enhanced audio transcription with better mock data"""
-    
-    # Enhanced mock transcriptions for demo
-    mock_transcriptions = {
-        "hi": "मेरा घर गांव में है। यहाँ बहुत शांति है। हमारे पास बड़ा बगीचा है और गाय हैं। मैं अच्छा देसी खाना बनाती हूँ। पारंपरिक घर है पुराना। शहर से लोग आकर आराम कर सकते हैं और गांव की जिंदगी देख सकते हैं।",
-        "en": "My house is in a peaceful village. We have a large garden and cows. I cook authentic local food. It's a traditional old house. People from the city can come and relax and experience village life.",
-        "gu": "મારું ઘર ગામમાં છે. અહીં ખૂબ શાંતિ છે. અમારી પાસે મોટો બગીચો અને ગાયો છે. હું સારું દેશી ખાવાનું બનાવું છું.",
-        "te": "మా ఇల్లు గ్రామంలో ఉంది. ఇక్కడ చాలా శాంతిగా ఉంది. మా దగ్గర పెద్ద తోట, ఆవులు ఉన్నాయి. నేను మంచి స్థానిక అన్నం వండతాను."
-    }
-    
-    # Select based on language or default to Hindi
-    transcribed = mock_transcriptions.get(language, mock_transcriptions["hi"])
-    
-    print(f"🎤 Transcribing audio in {language}")
-    print(f"📝 Transcribed: {transcribed}")
-    
-    return transcribed
-
+        print(f"❌ Voice processing error: {str(e)}")
+        raise Exception(f"Voice processing failed: {str(e)}")
 
 @ai_features_bp.route('/create-listing-from-voice', methods=['POST'])
 @jwt_required()
@@ -359,7 +340,6 @@ def create_listing_from_voice():
     except Exception as e:
         print(f"Create listing error: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 
 # ============ FEATURE 3: AI CULTURAL CONCIERGE ============
 
@@ -514,18 +494,6 @@ def get_location_cultural_insights(location):
    except Exception as e:
        return jsonify({"error": str(e)}), 500
 
-# ============ HELPER FUNCTIONS ============
-
-def extract_price_from_suggestion(pricing_intelligence):
-   """Extract price from pricing intelligence data"""
-   
-   try:
-       if isinstance(pricing_intelligence, dict):
-           return pricing_intelligence.get('base_price_per_night', 1800)
-       return 1800
-   except:
-       return 1800
-
 # ============ AI IMAGE ANALYSIS ROUTES ============
 
 @ai_features_bp.route('/analyze-property-images', methods=['POST'])
@@ -654,36 +622,27 @@ def create_photo_generation_prompt(listing, photo_type):
 
 # ============ DEMO AND TEST ROUTES ============
 
+@ai_features_bp.route('/test-google-speech', methods=['GET'])
+def test_google_speech():
+    try:
+        from utils.google_speech_utils import test_google_speech_setup
+        result = test_google_speech_setup()
+        
+        return jsonify({
+            "google_speech_setup_complete": result,
+            "message": "Check console logs for detailed status"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @ai_features_bp.route('/demo/voice-transcription', methods=['POST'])
 def demo_voice_transcription():
-   """Demo endpoint for voice transcription testing"""
-   try:
-       data = request.get_json()
-       
-       language = data.get('language', 'hi')
-       mock_text = data.get('mock_text', '')
-       
-       # If mock text provided, use it; otherwise use demo text
-       if not mock_text:
-           demo_texts = {
-               'hi': 'मेरा घर गांव में है। यहाँ बहुत शांति है। हमारे पास गाय हैं, खेत हैं।',
-               'en': 'My house is in the village. It is very peaceful here. We have cows and fields.',
-               'gu': 'મારું ઘર ગામમાં છે. અહીં ખૂબ શાંતિ છે.',
-               'te': 'మా ఇల్లు గ్రామంలో ఉంది. ఇక్కడ చాలా శాంతిగా ఉంది.'
-           }
-           transcribed_text = demo_texts.get(language, demo_texts['en'])
-       else:
-           transcribed_text = mock_text
-       
-       return jsonify({
-           "transcribed_text": transcribed_text,
-           "language": language,
-           "confidence": 0.95,
-           "demo_mode": True
-       }), 200
-       
-   except Exception as e:
-       return jsonify({"error": str(e)}), 500
+   """Demo endpoint for voice transcription testing - REMOVED MOCK DATA"""
+   return jsonify({
+       "error": "Demo mode disabled - use real Google Speech-to-Text only",
+       "message": "Configure Google Cloud credentials to use voice transcription"
+   }), 400
 
 @ai_features_bp.route('/demo/cultural-chat', methods=['POST'])
 def demo_cultural_chat():

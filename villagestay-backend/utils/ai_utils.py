@@ -4,7 +4,6 @@ import base64
 import time
 import uuid
 from config import Config
-from utils.azure_audio_utils import transcribe_audio_azure_whisper, enhance_listing_with_azure_gpt, create_fallback_listing_data
 
 def call_gemini_api(prompt, model="gemini-2.0-flash"):
     """Make API call to Gemini"""
@@ -36,8 +35,7 @@ def call_gemini_api(prompt, model="gemini-2.0-flash"):
     
     try:
         if not Config.GEMINI_API_KEY:
-            print("⚠️ No Gemini API key, using fallback")
-            return generate_fallback_ai_response(prompt)
+            raise Exception("Gemini API key not configured")
             
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
@@ -47,49 +45,11 @@ def call_gemini_api(prompt, model="gemini-2.0-flash"):
         if 'candidates' in result and len(result['candidates']) > 0:
             return result['candidates'][0]['content']['parts'][0]['text']
         else:
-            return generate_fallback_ai_response(prompt)
+            raise Exception("No valid response from Gemini API")
             
     except Exception as e:
         print(f"Gemini API error: {e}")
-        return generate_fallback_ai_response(prompt)
-
-def generate_fallback_ai_response(prompt):
-    """Generate fallback response when AI API is not available"""
-    
-    if "listing" in prompt.lower():
-        return json.dumps({
-            "title": "Traditional Village Homestay",
-            "description": "Experience authentic rural life in our traditional village home. Enjoy home-cooked meals, participate in farming activities, and immerse yourself in local culture. Our family has been welcoming guests for generations, offering a genuine glimpse into village life.",
-            "amenities": [
-                "Home-cooked meals",
-                "Local cultural activities", 
-                "Farming experience",
-                "Traditional games",
-                "Local guide services",
-                "Wi-Fi connectivity"
-            ],
-            "property_type": "homestay",
-            "pricing_suggestion": "₹2000",
-            "house_rules": [
-                "Respect local customs and traditions",
-                "No smoking inside the house",
-                "Maintain cleanliness",
-                "Be respectful to family members"
-            ],
-            "unique_features": [
-                "Traditional architecture",
-                "Organic farm produce",
-                "Cultural immersion experience"
-            ],
-            "sustainability_features": [
-                "Organic farming",
-                "Local sourcing",
-                "Traditional cooking methods"
-            ],
-            "max_guests": 4
-        })
-    
-    return "I understand you're looking for assistance with rural tourism. Let me help you with authentic village experiences."
+        raise Exception(f"Gemini API failed: {str(e)}")
 
 def call_gemini_with_image(prompt, image_data, model="gemini-2.0-flash"):
     """Make API call to Gemini with image"""
@@ -126,6 +86,9 @@ def call_gemini_with_image(prompt, image_data, model="gemini-2.0-flash"):
     }
     
     try:
+        if not Config.GEMINI_API_KEY:
+            raise Exception("Gemini API key not configured")
+            
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
         
@@ -134,65 +97,66 @@ def call_gemini_with_image(prompt, image_data, model="gemini-2.0-flash"):
         if 'candidates' in result and len(result['candidates']) > 0:
             return result['candidates'][0]['content']['parts'][0]['text']
         else:
-            return "Unable to generate response"
+            raise Exception("No valid response from Gemini API")
             
     except Exception as e:
         print(f"Gemini API error: {e}")
-        return "Error generating content"
+        raise Exception(f"Gemini API with image failed: {str(e)}")
 
 def transcribe_audio_enhanced(audio_data, language):
-    """Real audio transcription using Azure Whisper"""
+    """Real audio transcription using Google Speech-to-Text"""
     
     try:
-        print(f"🎤 Starting Azure transcription for language: {language}")
+        print(f"🎤 Starting Google Speech-to-Text transcription for language: {language}")
         
-        # Import Azure function
-        from utils.azure_audio_utils import transcribe_audio_azure_whisper
+        # Import Google Speech function
+        from utils.google_speech_utils import transcribe_audio_google_speech
         
-        # Use Azure Whisper for real transcription
-        result = transcribe_audio_azure_whisper(audio_data, language)
+        # Use Google Speech-to-Text for real transcription
+        result = transcribe_audio_google_speech(audio_data, language)
         
         transcribed_text = result["text"]
         detected_language = result["language"]
         confidence = result["confidence"]
         
-        print(f"📝 Azure transcribed ({confidence*100:.1f}% confidence): {transcribed_text}")
+        print(f"📝 Google Speech transcribed ({confidence*100:.1f}% confidence): {transcribed_text}")
         print(f"🌍 Language: {detected_language}")
         
         return transcribed_text
         
     except Exception as e:
-        print(f"❌ Azure transcription failed: {str(e)}")
-        print("🔄 Falling back to mock transcription for testing...")
-        
-        # Fallback to show the error clearly
+        print(f"❌ Google Speech transcription failed: {str(e)}")
         raise Exception(f"Real audio transcription failed: {str(e)}")
 
 def generate_smart_pricing(listing_data, language):
     """Generate intelligent pricing suggestions"""
     
-    # Extract pricing from listing if available
-    pricing_text = listing_data.get('pricing_suggestion', '₹2000')
-    
-    # Try to extract numeric value
-    import re
-    price_match = re.search(r'(\d+)', pricing_text.replace(',', ''))
-    base_price = int(price_match.group(1)) if price_match else 2000
-    
-    # Ensure reasonable pricing for rural India
-    if base_price < 1000:
-        base_price = 1500
-    elif base_price > 5000:
-        base_price = 3000
+    try:
+        # Extract pricing from listing if available
+        pricing_text = listing_data.get('pricing_suggestion', '₹2000')
         
-    return {
-        "base_price_per_night": base_price,
-        "peak_season_multiplier": 1.3,
-        "off_season_discount": 0.8,
-        "weekly_stay_discount": 0.9,
-        "monthly_stay_discount": 0.8,
-        "pricing_rationale": f"Based on rural homestay standards and amenities. Property type: {listing_data.get('property_type', 'homestay')}"
-    }
+        # Try to extract numeric value
+        import re
+        price_match = re.search(r'(\d+)', pricing_text.replace(',', ''))
+        base_price = int(price_match.group(1)) if price_match else 2000
+        
+        # Ensure reasonable pricing for rural India
+        if base_price < 1000:
+            base_price = 1500
+        elif base_price > 5000:
+            base_price = 3000
+            
+        return {
+            "base_price_per_night": base_price,
+            "peak_season_multiplier": 1.3,
+            "off_season_discount": 0.8,
+            "weekly_stay_discount": 0.9,
+            "monthly_stay_discount": 0.8,
+            "pricing_rationale": f"Based on rural homestay standards and amenities. Property type: {listing_data.get('property_type', 'homestay')}"
+        }
+    except Exception as e:
+        print(f"❌ Pricing generation error: {e}")
+        raise Exception(f"Pricing generation failed: {str(e)}")
 
 def create_multilingual_listing(listing_data, original_language):
     """Create translations in multiple languages"""
@@ -205,44 +169,67 @@ def create_multilingual_listing(listing_data, original_language):
             translations[lang] = listing_data
             continue
             
-        # For demo, provide basic translations
-        if lang == 'en' and original_language != 'en':
-            translations[lang] = {
-                **listing_data,
-                "title": f"Authentic Rural {listing_data.get('property_type', 'Homestay').title()}",
-                "description": "Experience authentic village life with local families. Enjoy traditional cuisine, participate in farming activities, and immerse yourself in rural culture."
-            }
-        else:
+        # Use Gemini for translations
+        try:
+            if lang == 'en' and original_language != 'en':
+                translation_prompt = f"""
+                Translate this rural homestay listing to English while maintaining cultural context:
+                
+                Title: {listing_data.get('title', '')}
+                Description: {listing_data.get('description', '')}
+                
+                Provide JSON with translated title and description:
+                {{
+                    "title": "translated_title",
+                    "description": "translated_description"
+                }}
+                """
+                
+                translation_result = call_gemini_api(translation_prompt)
+                
+                # Try to parse JSON
+                import re
+                json_match = re.search(r'\{.*\}', translation_result, re.DOTALL)
+                if json_match:
+                    translated_data = json.loads(json_match.group())
+                    translations[lang] = {
+                        **listing_data,
+                        "title": translated_data.get('title', listing_data['title']),
+                        "description": translated_data.get('description', listing_data['description'])
+                    }
+                else:
+                    translations[lang] = listing_data
+            else:
+                translations[lang] = listing_data
+                
+        except Exception as e:
+            print(f"❌ Translation failed for {lang}: {e}")
             translations[lang] = listing_data
     
     return translations
 
 def voice_to_listing_magic(audio_data, language="hi", host_id=None):
-    """Convert voice recording to professional listing using Azure OpenAI"""
+    """Convert voice recording to professional listing using Google Speech + Gemini"""
     
     try:
-        print(f"🎤 Processing voice input with Azure OpenAI in language: {language}")
+        print(f"🎤 Processing voice input with Google Speech + Gemini in language: {language}")
         
-        # Step 1: Real speech to text transcription using Azure Whisper
+        # Step 1: Real speech to text transcription using Google Speech-to-Text
         try:
             transcribed_text = transcribe_audio_enhanced(audio_data, language)
             print(f"✅ Transcription successful: {transcribed_text}")
         except Exception as transcription_error:
             print(f"❌ Transcription failed: {transcription_error}")
-            return {
-                "error": f"Audio transcription failed: {str(transcription_error)}",
-                "processing_status": "failed"
-            }
+            raise Exception(f"Audio transcription failed: {str(transcription_error)}")
         
-        # Step 2: Enhance with Azure GPT-4o
+        # Step 2: Enhance with Gemini
         try:
-            from utils.azure_audio_utils import enhance_listing_with_azure_gpt, create_fallback_listing_data
-            listing_data = enhance_listing_with_azure_gpt(transcribed_text, language)
-            print(f"✅ Azure GPT-4o enhancement successful")
+            from utils.google_speech_utils import enhance_listing_with_gemini
+            listing_data = enhance_listing_with_gemini(transcribed_text, language)
+            print(f"✅ Gemini enhancement successful")
         except Exception as e:
-            print(f"❌ Azure GPT enhancement failed: {e}")
-            from utils.azure_audio_utils import create_fallback_listing_data
-            listing_data = create_fallback_listing_data(transcribed_text, language)
+            print(f"❌ Gemini enhancement failed: {e}")
+            raise Exception(f"Listing enhancement failed: {str(e)}")
         
         # Step 3: Generate pricing intelligence
         try:
@@ -250,14 +237,7 @@ def voice_to_listing_magic(audio_data, language="hi", host_id=None):
             print(f"💰 Pricing generated: {pricing_intel}")
         except Exception as pricing_error:
             print(f"❌ Pricing generation failed: {pricing_error}")
-            pricing_intel = {
-                "base_price_per_night": 2000,
-                "peak_season_multiplier": 1.3,
-                "off_season_discount": 0.8,
-                "weekly_stay_discount": 0.9,
-                "monthly_stay_discount": 0.8,
-                "pricing_rationale": "Default pricing for rural homestay"
-            }
+            raise Exception(f"Pricing generation failed: {str(pricing_error)}")
         
         # Step 4: Create multi-language versions
         try:
@@ -274,20 +254,18 @@ def voice_to_listing_magic(audio_data, language="hi", host_id=None):
             "pricing_intelligence": pricing_intel,
             "translations": translations,
             "processing_status": "completed",
-            "confidence_score": 0.95
+            "confidence_score": 0.95,
+            "transcription_source": "google_speech_to_text"
         }
         
     except Exception as e:
         print(f"❌ Voice processing error: {str(e)}")
-        return {
-            "error": str(e),
-            "processing_status": "failed"
-        }
+        raise Exception(f"Voice processing failed: {str(e)}")
 
 # ============ FEATURE 1: AI VILLAGE STORY GENERATOR ============
 
 def generate_village_story_video(images, listing_details, host_info):
-    """Generate AI village story video using Gemini + Veo"""
+    """Generate AI village story video using Gemini"""
     
     try:
         # Analyze images and create story prompt
@@ -312,8 +290,8 @@ def generate_village_story_video(images, listing_details, host_info):
         
         story_script = call_gemini_api(story_prompt)
         
-        # Generate video using Veo (mock implementation)
-        video_data = generate_video_with_veo(story_script, images, listing_details)
+        # Generate video metadata (mock implementation for video generation)
+        video_data = generate_video_metadata(story_script, images, listing_details)
         
         return {
             "video_id": video_data['video_id'],
@@ -326,17 +304,13 @@ def generate_village_story_video(images, listing_details, host_info):
         }
         
     except Exception as e:
-        return {
-            "error": str(e),
-            "generation_status": "failed"
-        }
+        raise Exception(f"Village story generation failed: {str(e)}")
 
-def generate_video_with_veo(script, images, listing_details):
-    """Generate video using Google's Veo model (mock implementation)"""
+def generate_video_metadata(script, images, listing_details):
+    """Generate video metadata (mock implementation)"""
     
     video_id = f"video_{uuid.uuid4().hex[:12]}"
     
-    # Mock video generation process
     video_data = {
         "video_id": video_id,
         "video_url": f"https://storage.googleapis.com/villagestay-videos/{video_id}.mp4",
@@ -357,9 +331,6 @@ def cultural_concierge_chat(user_message, user_preferences, conversation_history
     """AI Cultural Concierge for personalized travel planning"""
     
     try:
-        # Build context from user preferences and history
-        context = build_cultural_context(user_preferences, conversation_history)
-        
         # Create comprehensive prompt for cultural concierge
         concierge_prompt = f"""
         You are an AI Cultural Concierge for VillageStay, specializing in authentic rural Indian experiences.
@@ -411,39 +382,7 @@ def cultural_concierge_chat(user_message, user_preferences, conversation_history
         }
         
     except Exception as e:
-        return {
-            "response": "I'm here to help you discover authentic rural experiences! Could you tell me more about what kind of cultural experience you're looking for?",
-            "error": str(e),
-            "status": "fallback_response"
-        }
-
-def build_cultural_context(user_preferences, conversation_history):
-    """Build cultural context for better recommendations"""
-    
-    context = {
-        "cultural_interests": [],
-        "dietary_preferences": user_preferences.get('dietary_restrictions', []),
-        "accessibility_needs": user_preferences.get('accessibility_needs', []),
-        "group_size": user_preferences.get('group_size', 2),
-        "travel_experience": user_preferences.get('travel_experience', 'moderate')
-    }
-    
-    # Analyze conversation history for patterns
-    if conversation_history:
-        interests = []
-        for msg in conversation_history:
-            if 'spiritual' in msg.lower():
-                interests.append('spiritual')
-            if 'food' in msg.lower() or 'cooking' in msg.lower():
-                interests.append('culinary')
-            if 'nature' in msg.lower() or 'wildlife' in msg.lower():
-                interests.append('nature')
-            if 'adventure' in msg.lower():
-                interests.append('adventure')
-        
-        context['cultural_interests'] = list(set(interests))
-    
-    return context
+        raise Exception(f"Cultural concierge failed: {str(e)}")
 
 def extract_actionable_items(ai_response, user_message):
     """Extract actionable items from AI response"""
@@ -497,9 +436,8 @@ def get_cultural_insights(user_message, user_preferences):
     Format as JSON array with insight text and importance level.
     """
     
-    insights_response = call_gemini_api(insights_prompt)
-    
     try:
+        insights_response = call_gemini_api(insights_prompt)
         return json.loads(insights_response)
     except:
         return [
@@ -594,7 +532,7 @@ def generate_conversation_id():
     """Generate unique conversation ID"""
     return f"conv_{uuid.uuid4().hex[:12]}"
 
-# ============ EXISTING FUNCTIONS (keep all previous functions) ============
+# ============ EXISTING FUNCTIONS ============
 
 def generate_listing_content(title, description, location, property_type, amenities):
     """Generate enhanced listing content using AI"""
@@ -624,13 +562,7 @@ def generate_listing_content(title, description, location, property_type, amenit
         content = json.loads(response)
         return content
     except:
-        # Fallback if JSON parsing fails
-        return {
-            "description": response,
-            "suggested_amenities": ["Wi-Fi", "Home-cooked meals", "Local guide services"],
-            "house_rules": ["Respect local customs", "No smoking indoors", "Keep the premises clean"],
-            "pricing_tips": ["Consider seasonal pricing", "Offer discounts for longer stays"]
-        }
+        raise Exception("Failed to generate listing content")
 
 def generate_travel_itinerary(query, user_preferences):
     """Generate travel itinerary based on user query"""
@@ -690,13 +622,7 @@ def generate_content_from_voice(voice_text, language):
     try:
         return json.loads(response)
     except:
-        return {
-            "title": "Rural Homestay Experience",
-            "description": voice_text,
-            "amenities": ["Basic accommodation", "Home-cooked meals"],
-            "suggested_price_range": "₹1000-2000",
-            "property_type": "homestay"
-        }
+        raise Exception("Failed to generate content from voice")
 
 def moderate_content(content, content_type):
     """Moderate content for safety and appropriateness"""
@@ -724,12 +650,7 @@ def moderate_content(content, content_type):
     try:
         return json.loads(response)
     except:
-        return {
-            "is_safe": True,
-            "confidence": 0.8,
-            "categories": [],
-            "suggestions": []
-        }
+        raise Exception("Content moderation failed")
 
 def generate_pricing_suggestion(location, property_type, amenities, max_guests, rating):
     """Generate AI-powered pricing suggestions"""
@@ -762,13 +683,7 @@ def generate_pricing_suggestion(location, property_type, amenities, max_guests, 
     try:
         return json.loads(response)
     except:
-        return {
-            "base_price": 1500,
-            "seasonal_adjustments": {"peak": 25, "off_peak": -15},
-            "weekly_discount_percentage": 10,
-            "monthly_discount_percentage": 20,
-            "reasoning": "Based on location and amenities"
-        }
+        raise Exception("Pricing suggestion generation failed")
 
 def generate_sustainability_suggestions(property_type, location, amenities, current_features):
     """Generate sustainability improvement suggestions"""
@@ -799,29 +714,7 @@ def generate_sustainability_suggestions(property_type, location, amenities, curr
     try:
         return json.loads(response)
     except:
-        return [
-            {
-                "feature_name": "Solar Water Heating",
-                "category": "energy",
-                "implementation_cost": "medium",
-                "environmental_impact": "Reduces electricity consumption by 40-60%",
-                "guest_appeal": "Eco-friendly hot water, cost savings passed to guests"
-            },
-            {
-                "feature_name": "Rainwater Harvesting",
-                "category": "water",
-                "implementation_cost": "medium",
-                "environmental_impact": "Conserves groundwater, reduces dependency on external sources",
-                "guest_appeal": "Showcases traditional water conservation methods"
-            },
-            {
-                "feature_name": "Organic Kitchen Garden",
-                "category": "community",
-                "implementation_cost": "low",
-                "environmental_impact": "Reduces chemical use, improves soil health",
-                "guest_appeal": "Fresh organic produce, farm-to-table experience"
-            }
-        ]
+        raise Exception("Sustainability suggestions generation failed")
 
 def generate_experience_content(experience_type, location, duration, local_culture):
     """Generate content for local experiences"""
@@ -851,12 +744,4 @@ def generate_experience_content(experience_type, location, duration, local_cultu
     try:
         return json.loads(response)
     except:
-        return {
-            "title": f"Authentic {experience_type} Experience",
-            "description": f"Immerse yourself in local {experience_type} activities in {location}",
-            "inclusions": ["Local guide", "Traditional materials", "Refreshments"],
-            "requirements": ["Comfortable clothing", "Sun protection", "Camera"],
-            "pricing_suggestion": 800,
-            "best_time": "Morning hours",
-            "cultural_tips": ["Respect local customs", "Ask before photographing"]
-        }
+        raise Exception("Experience content generation failed")
