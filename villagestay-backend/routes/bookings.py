@@ -43,34 +43,42 @@ def create_booking():
             return jsonify({"error": "Listing not found"}), 404
         
         if not listing['is_active'] or not listing['is_approved']:
-            return jsonify({"error": "Listing is not available"}), 400
+            return jsonify({"error": "Listing is not available for booking"}), 400
         
-        # Check availability
-        if not check_availability(data['listing_id'], data['check_in'], data['check_out']):
-            return jsonify({"error": "Listing is not available for selected dates"}), 400
+        # Parse and validate dates
+        try:
+            check_in_date = datetime.strptime(data['check_in'], '%Y-%m-%d')
+            check_out_date = datetime.strptime(data['check_out'], '%Y-%m-%d')
+        except ValueError:
+            return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+        
+        if check_in_date >= check_out_date:
+            return jsonify({"error": "Check-out date must be after check-in date"}), 400
+        
+        if check_in_date < datetime.now().replace(hour=0, minute=0, second=0, microsecond=0):
+            return jsonify({"error": "Check-in date cannot be in the past"}), 400
+        
+        # Check availability with better error messaging
+        if not check_availability(data['listing_id'], check_in_date, check_out_date):
+            return jsonify({
+                "error": "Selected dates are not available. Please choose different dates.",
+                "suggestion": "Try selecting dates at least 1 day apart from existing bookings"
+            }), 400
         
         # Validate guests
         if data['guests'] > listing['max_guests']:
             return jsonify({"error": f"Maximum {listing['max_guests']} guests allowed"}), 400
         
-        # Calculate dates and pricing
-        check_in_date = datetime.strptime(data['check_in'], '%Y-%m-%d')
-        check_out_date = datetime.strptime(data['check_out'], '%Y-%m-%d')
-        
-        if check_in_date >= check_out_date:
-            return jsonify({"error": "Check-out date must be after check-in date"}), 400
-        
-        if check_in_date < datetime.now():
-            return jsonify({"error": "Check-in date cannot be in the past"}), 400
-        
+        # Calculate pricing
         nights = (check_out_date - check_in_date).days
         base_amount = listing['price_per_night'] * nights
-        
-        # Calculate fees
         platform_fee = base_amount * 0.05  # 5% platform fee
         community_contribution = base_amount * 0.02  # 2% community fund
         host_earnings = base_amount - platform_fee - community_contribution
         total_amount = base_amount + platform_fee
+        
+        # Generate unique booking reference
+        booking_reference = f"VS{datetime.now().strftime('%Y%m%d')}{random.randint(1000, 9999)}"
         
         # Create booking document
         booking_doc = {
@@ -92,13 +100,14 @@ def create_booking():
             "status": "pending",
             "payment_status": "unpaid",
             "payment_id": None,
-            "booking_reference": generate_booking_reference()
+            "booking_reference": booking_reference
         }
         
         # Insert booking
         result = mongo.db.bookings.insert_one(booking_doc)
         
-        # Create payment
+        # Create payment (mock)
+        from utils.payment_utils import create_payment
         payment_data = create_payment(
             total_amount,
             f"Booking for {listing['title']}",
@@ -114,7 +123,7 @@ def create_booking():
         return jsonify({
             "message": "Booking created successfully",
             "booking_id": str(result.inserted_id),
-            "booking_reference": booking_doc['booking_reference'],
+            "booking_reference": booking_reference,
             "payment_data": payment_data,
             "booking_details": {
                 "listing_title": listing['title'],
@@ -127,7 +136,8 @@ def create_booking():
         }), 201
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Booking creation error: {str(e)}")
+        return jsonify({"error": "Failed to create booking. Please try again."}), 500
 
 @bookings_bp.route('/<booking_id>/payment', methods=['POST'])
 @jwt_required()
@@ -497,24 +507,75 @@ def check_availability(listing_id, check_in, check_out):
     """Check if listing is available for given dates"""
     try:
         # Convert dates to datetime objects
-        check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
-        check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+        if isinstance(check_in, str):
+            check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+        else:
+            check_in_date = check_in
+            
+        if isinstance(check_out, str):
+            check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+        else:
+            check_out_date = check_out
         
-        # Check for existing bookings
+        print(f"Checking availability for listing {listing_id}")
+        print(f"Check-in: {check_in_date}, Check-out: {check_out_date}")
+        
+        # Check for existing confirmed bookings that overlap
         existing_bookings = mongo.db.bookings.find({
             "listing_id": ObjectId(listing_id),
             "status": {"$in": ["confirmed", "pending"]},
             "$or": [
-                {"check_in": {"$lte": check_in_date}, "check_out": {"$gt": check_in_date}},
-                {"check_in": {"$lt": check_out_date}, "check_out": {"$gte": check_out_date}},
-                {"check_in": {"$gte": check_in_date}, "check_out": {"$lte": check_out_date}}
+                # New booking starts during existing booking
+                {
+                    "check_in": {"$lte": check_in_date},
+                    "check_out": {"$gt": check_in_date}
+                },
+                # New booking ends during existing booking  
+                {
+                    "check_in": {"$lt": check_out_date},
+                    "check_out": {"$gte": check_out_date}
+                },
+                # New booking completely contains existing booking
+                {
+                    "check_in": {"$gte": check_in_date},
+                    "check_out": {"$lte": check_out_date}
+                },
+                # Existing booking completely contains new booking
+                {
+                    "check_in": {"$lte": check_in_date},
+                    "check_out": {"$gte": check_out_date}
+                }
             ]
         })
         
-        if existing_bookings.count() > 0:
+        conflicting_bookings = list(existing_bookings)
+        print(f"Found {len(conflicting_bookings)} conflicting bookings")
+        
+        if len(conflicting_bookings) > 0:
+            print("Dates not available - conflicts found")
             return False
         
+        # Check availability calendar (host-blocked dates)
+        listing = mongo.db.listings.find_one({"_id": ObjectId(listing_id)})
+        if not listing:
+            print("Listing not found")
+            return False
+        
+        availability_calendar = listing.get('availability_calendar', {})
+        
+        # Check each date in the range
+        current_date = check_in_date
+        while current_date < check_out_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            # If date is explicitly blocked (False), not available
+            if availability_calendar.get(date_str) == False:
+                print(f"Date {date_str} is blocked by host")
+                return False
+            current_date += timedelta(days=1)
+        
+        print("Dates are available")
         return True
         
     except Exception as e:
+        print(f"Error checking availability: {str(e)}")
         return False

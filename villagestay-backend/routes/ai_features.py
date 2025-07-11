@@ -5,11 +5,14 @@ from utils.ai_utils import (
     generate_village_story_video, 
     voice_to_listing_magic, 
     cultural_concierge_chat,
-    call_gemini_with_image
+    call_gemini_with_image,
+    call_gemini_api
 )
 from datetime import datetime
 from bson import ObjectId
 import base64
+import json
+import uuid
 
 ai_features_bp = Blueprint('ai_features', __name__)
 
@@ -102,7 +105,6 @@ def get_village_story_status(generation_id):
 
 # ============ FEATURE 2: VOICE-TO-LISTING MAGIC ============
 
-# In villagestay-backend/routes/ai_features.py, update the voice-to-listing route:
 
 @ai_features_bp.route('/voice-to-listing', methods=['POST'])
 @jwt_required()
@@ -116,27 +118,41 @@ def voice_to_listing():
             return jsonify({"error": "Only hosts can use voice-to-listing"}), 403
         
         # Handle both JSON and form data
-        if request.is_json:
-            data = request.get_json()
-            language = data.get('language', 'hi')
-            audio_data = data.get('audio_data')
-        else:
+        if request.content_type and 'multipart/form-data' in request.content_type:
             # Handle form data with file upload
-            data = request.form
-            language = data.get('language', 'hi')
+            language = request.form.get('language', 'hi')
             audio_file = request.files.get('audio_data')
             
             if audio_file:
-                # Process uploaded audio file
+                # Read audio file content
                 audio_data = audio_file.read()
+                # Convert to base64 for processing
+                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
             else:
-                audio_data = data.get('audio_data')
+                return jsonify({"error": "No audio file provided"}), 400
+        else:
+            # Handle JSON data
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No data provided"}), 400
+                
+            language = data.get('language', 'hi')
+            audio_data = data.get('audio_data')
+            
+            if not audio_data:
+                return jsonify({"error": "Audio data is required"}), 400
+            
+            # Handle base64 audio data
+            if audio_data.startswith('data:audio'):
+                # Remove data URL prefix
+                audio_base64 = audio_data.split(',')[1]
+            else:
+                audio_base64 = audio_data
         
-        if not audio_data:
-            return jsonify({"error": "Audio data is required"}), 400
+        print(f"Processing voice input in language: {language}")
         
         # Process voice to listing
-        listing_result = voice_to_listing_magic(audio_data, language, user_id)
+        listing_result = voice_to_listing_magic(audio_base64, language, user_id)
         
         # Save the voice processing record
         voice_record = {
@@ -159,7 +175,7 @@ def voice_to_listing():
         }), 200
         
     except Exception as e:
-        print(f"Voice processing error: {str(e)}")  # Debug log
+        print(f"Voice processing error: {str(e)}")
         return jsonify({"error": f"Voice processing failed: {str(e)}"}), 500
 
 # Also update the voice_to_listing_magic function:
@@ -251,87 +267,96 @@ def transcribe_audio_enhanced(audio_data, language):
 @ai_features_bp.route('/create-listing-from-voice', methods=['POST'])
 @jwt_required()
 def create_listing_from_voice():
-   try:
-       user_id = get_jwt_identity()
-       data = request.get_json()
-       
-       # Verify user is a host
-       user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
-       if not user or user['user_type'] != 'host':
-           return jsonify({"error": "Only hosts can create listings"}), 403
-       
-       processing_id = data.get('processing_id')
-       selected_language = data.get('selected_language', 'en')
-       custom_edits = data.get('custom_edits', {})
-       
-       if not processing_id:
-           return jsonify({"error": "Processing ID is required"}), 400
-       
-       # Get voice processing result
-       voice_record = mongo.db.voice_generations.find_one({
-           "_id": ObjectId(processing_id),
-           "host_id": ObjectId(user_id)
-       })
-       
-       if not voice_record:
-           return jsonify({"error": "Voice processing record not found"}), 404
-       
-       # Get the enhanced listing data
-       listing_data = voice_record['processing_result']['enhanced_listing']
-       translations = voice_record['processing_result']['translations']
-       
-       # Use selected language version
-       final_listing = translations.get(selected_language, listing_data)
-       
-       # Apply custom edits
-       for key, value in custom_edits.items():
-           if key in final_listing:
-               final_listing[key] = value
-       
-       # Create the actual listing
-       listing_doc = {
-           "host_id": ObjectId(user_id),
-           "title": final_listing.get('title', 'Rural Experience'),
-           "description": final_listing.get('description', ''),
-           "location": user.get('address', 'Rural India'),
-           "price_per_night": extract_price_from_suggestion(
-               voice_record['processing_result']['pricing_intelligence']
-           ),
-           "property_type": final_listing.get('property_type', 'homestay'),
-           "amenities": final_listing.get('amenities', []),
-           "images": [],
-           "coordinates": {"lat": 0, "lng": 0},  # Will be geocoded later
-           "max_guests": final_listing.get('max_guests', 4),
-           "house_rules": final_listing.get('house_rules', []),
-           "sustainability_features": final_listing.get('sustainability_features', []),
-           "created_at": datetime.utcnow(),
-           "updated_at": datetime.utcnow(),
-           "is_active": True,
-           "is_approved": False,
-           "rating": 0.0,
-           "review_count": 0,
-           "availability_calendar": {},
-           "ai_generated": True,
-           "voice_generated": True,
-           "original_voice_language": voice_record['original_language']
-       }
-       
-       # Insert listing
-       result = mongo.db.listings.insert_one(listing_doc)
-       
-       return jsonify({
-           "message": "Listing created successfully from voice",
-           "listing_id": str(result.inserted_id),
-           "listing_data": {
-               "title": listing_doc['title'],
-               "description": listing_doc['description'],
-               "price_per_night": listing_doc['price_per_night'],
-               "property_type": listing_doc['property_type']
-           }
-       }), 201
-       
-   except Exception as e:
-       return jsonify({"error": str(e)}), 500
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Verify user is a host
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        if not user or user['user_type'] != 'host':
+            return jsonify({"error": "Only hosts can create listings"}), 403
+        
+        processing_id = data.get('processing_id')
+        selected_language = data.get('selected_language', 'en')
+        custom_edits = data.get('custom_edits', {})
+        
+        if not processing_id:
+            return jsonify({"error": "Processing ID is required"}), 400
+        
+        # Get voice processing result
+        voice_record = mongo.db.voice_generations.find_one({
+            "_id": ObjectId(processing_id),
+            "host_id": ObjectId(user_id)
+        })
+        
+        if not voice_record:
+            return jsonify({"error": "Voice processing record not found"}), 404
+        
+        # Get the enhanced listing data
+        processing_result = voice_record['processing_result']
+        
+        if 'error' in processing_result:
+            return jsonify({"error": "Voice processing failed"}), 400
+        
+        listing_data = processing_result.get('enhanced_listing', {})
+        translations = processing_result.get('translations', {})
+        
+        # Use selected language version or default
+        final_listing = translations.get(selected_language, listing_data)
+        
+        # Apply custom edits
+        for key, value in custom_edits.items():
+            if key in ['title', 'description', 'property_type', 'price_per_night', 'max_guests']:
+                final_listing[key] = value
+        
+        # Extract price from pricing suggestion if available
+        pricing_intel = processing_result.get('pricing_intelligence', {})
+        suggested_price = pricing_intel.get('base_price_per_night', 2000)
+        
+        # Create the actual listing
+        listing_doc = {
+            "host_id": ObjectId(user_id),
+            "title": final_listing.get('title', 'Rural Village Experience'),
+            "description": final_listing.get('description', 'Authentic rural stay experience'),
+            "location": user.get('address', 'Rural India'),
+            "price_per_night": custom_edits.get('price_per_night', suggested_price),
+            "property_type": final_listing.get('property_type', 'homestay'),
+            "amenities": final_listing.get('amenities', ['Home-cooked meals', 'Local guide']),
+            "images": [],  # Will be added later
+            "coordinates": {"lat": 0, "lng": 0},  # Will be geocoded later
+            "max_guests": custom_edits.get('max_guests', final_listing.get('max_guests', 4)),
+            "house_rules": final_listing.get('house_rules', []),
+            "sustainability_features": final_listing.get('sustainability_features', []),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "is_active": True,
+            "is_approved": False,  # Needs admin approval
+            "rating": 0.0,
+            "review_count": 0,
+            "availability_calendar": {},
+            "ai_generated": True,
+            "voice_generated": True,
+            "original_voice_language": voice_record['original_language']
+        }
+        
+        # Insert listing
+        result = mongo.db.listings.insert_one(listing_doc)
+        
+        return jsonify({
+            "message": "Listing created successfully from voice",
+            "listing_id": str(result.inserted_id),
+            "listing_data": {
+                "title": listing_doc['title'],
+                "description": listing_doc['description'],
+                "price_per_night": listing_doc['price_per_night'],
+                "property_type": listing_doc['property_type']
+            }
+        }), 201
+        
+    except Exception as e:
+        print(f"Create listing error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 
 # ============ FEATURE 3: AI CULTURAL CONCIERGE ============
 
