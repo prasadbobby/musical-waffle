@@ -14,8 +14,7 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
-import Providers from '@/components/providers/Providers';
-import AppLayout from '@/components/layout/AppLayout';
+
 import { adminAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDate, getStatusColor } from '@/lib/utils';
@@ -38,14 +37,13 @@ const AdminUsersPage = () => {
     is_verified: ''
   });
 
-  useEffect(() => {
-    if (!isAdmin) {
-      toast.error('Access denied. Admin privileges required.');
-      router.push('/');
-      return;
-    }
-    fetchUsers();
-  }, [isAdmin, router, pagination.page, filters]);
+useEffect(() => {
+  if (!isAdmin) {
+    router.push('/');
+    return;
+  }
+  fetchUsers();
+}, [isAdmin, router, pagination.page, filters]);
 
   const fetchUsers = async () => {
     try {
@@ -87,8 +85,7 @@ const AdminUsersPage = () => {
   };
 
   return (
-    <Providers>
-      <AppLayout>
+  
         <div className="min-h-screen village-bg pt-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
@@ -352,8 +349,7 @@ const AdminUsersPage = () => {
             </div>
           </div>
         </div>
-      </AppLayout>
-    </Providers>
+     
   );
 };
 

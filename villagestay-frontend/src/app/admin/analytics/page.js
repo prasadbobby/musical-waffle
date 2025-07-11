@@ -9,9 +9,8 @@ import {
   CurrencyRupeeIcon,
   ArrowTrendingUpIcon, // Use this instead of TrendingUpIcon
   MapPinIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
 import { adminAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/utils';
@@ -31,14 +30,13 @@ const AdminAnalyticsPage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState(30);
   const [selectedMetric, setSelectedMetric] = useState('users');
 
-  useEffect(() => {
-    if (!isAdmin) {
-      toast.error('Access denied. Admin privileges required.');
-      router.push('/');
-      return;
-    }
-    fetchAnalyticsData();
-  }, [isAdmin, router, selectedPeriod]);
+useEffect(() => {
+  if (!isAdmin) {
+    router.push('/');
+    return;
+  }
+  fetchAnalyticsData();
+}, [isAdmin, router, selectedPeriod]);
 
   const fetchAnalyticsData = async () => {
     try {
@@ -55,16 +53,14 @@ const AdminAnalyticsPage = () => {
 
   if (loading) {
     return (
-      <Providers>
-        <AppLayout>
+    
           <div className="min-h-screen village-bg pt-20 flex items-center justify-center">
             <div className="text-center">
               <div className="spinner spinner-lg mx-auto mb-4"></div>
               <p className="text-gray-600">Loading analytics...</p>
             </div>
           </div>
-        </AppLayout>
-      </Providers>
+       
     );
   }
 
@@ -76,8 +72,7 @@ const AdminAnalyticsPage = () => {
   ];
 
   return (
-    <Providers>
-      <AppLayout>
+  
         <div className="min-h-screen village-bg pt-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
@@ -160,7 +155,7 @@ const AdminAnalyticsPage = () => {
                     </div>
                     
                     <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <TrendingUpIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
+                      <ArrowTrendingUpIcon className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                       <div className="text-2xl font-bold text-gray-900">78%</div>
                       <div className="text-sm text-gray-600">Retention Rate</div>
                       <div className="text-xs text-green-600 mt-1">+5% improvement</div>
@@ -320,8 +315,7 @@ const AdminAnalyticsPage = () => {
             </div>
           </div>
         </div>
-      </AppLayout>
-    </Providers>
+     
   );
 };
 

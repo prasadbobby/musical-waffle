@@ -14,11 +14,9 @@ import {
   ChatBubbleLeftRightIcon,
   CameraIcon,
   SparklesIcon,
-  PlaneIcon,
-  TreePineIcon
+  BeakerIcon ,
 } from '@heroicons/react/24/outline';
-import Providers from '@/components/providers/Providers';
-import AppLayout from '@/components/layout/AppLayout';
+
 import { bookingsAPI, impactAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
@@ -122,16 +120,14 @@ const TouristDashboardPage = () => {
 
   if (loading) {
     return (
-      <Providers>
-        <AppLayout>
+      
           <div className="min-h-screen village-bg pt-20 flex items-center justify-center">
             <div className="text-center">
               <div className="spinner spinner-lg mx-auto mb-4"></div>
               <p className="text-gray-600">Loading your travel dashboard...</p>
             </div>
           </div>
-        </AppLayout>
-      </Providers>
+       
     );
   }
 
@@ -139,7 +135,7 @@ const TouristDashboardPage = () => {
     {
       label: 'Total Trips',
       value: dashboardData.stats.totalTrips,
-      icon: PlaneIcon,
+      icon:  MapPinIcon,
       color: 'from-blue-500 to-blue-600',
       change: '+3 this year'
     },
@@ -198,8 +194,7 @@ const TouristDashboardPage = () => {
   ];
 
   return (
-    <Providers>
-      <AppLayout>
+  
         <div className="min-h-screen village-bg pt-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
@@ -392,7 +387,7 @@ const TouristDashboardPage = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-green-50 rounded-xl">
-                      <TreePineIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                      <BeakerIcon  className="w-8 h-8 text-green-500 mx-auto mb-2" />
                       <div className="text-lg font-bold text-gray-900">{dashboardData.impact.carbon_saved}</div>
                       <div className="text-xs text-gray-600">CO₂ Saved</div>
                     </div>
@@ -452,8 +447,7 @@ const TouristDashboardPage = () => {
             </div>
           </div>
         </div>
-      </AppLayout>
-    </Providers>
+    
   );
 };
 

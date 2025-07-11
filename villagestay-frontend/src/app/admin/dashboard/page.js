@@ -17,7 +17,6 @@ import {
   ArrowTrendingUpIcon, // Use this instead of TrendingUpIcon
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
-import AppLayout from '@/components/layout/AppLayout';
 import { adminAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
@@ -37,14 +36,13 @@ const AdminDashboardPage = () => {
   });
   const [selectedPeriod, setSelectedPeriod] = useState(30);
 
-  useEffect(() => {
-    if (!isAdmin) {
-      toast.error('Access denied. Admin privileges required.');
-      router.push('/');
-      return;
-    }
-    fetchDashboardData();
-  }, [isAdmin, router, selectedPeriod]);
+useEffect(() => {
+  if (!isAdmin) {
+    router.push('/');
+    return;
+  }
+  fetchDashboardData();
+}, [isAdmin, router, selectedPeriod]);
 
   const fetchDashboardData = async () => {
     try {
@@ -104,14 +102,12 @@ const AdminDashboardPage = () => {
 
   if (loading) {
     return (
-      <AppLayout>
         <div className="min-h-screen village-bg pt-20 flex items-center justify-center">
           <div className="text-center">
             <div className="spinner spinner-lg mx-auto mb-4"></div>
             <p className="text-gray-600">Loading admin dashboard...</p>
           </div>
         </div>
-      </AppLayout>
     );
   }
 
@@ -195,7 +191,6 @@ const AdminDashboardPage = () => {
   ];
 
   return (
-    <AppLayout>
       <div className="min-h-screen village-bg pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -435,7 +430,6 @@ const AdminDashboardPage = () => {
           </motion.div>
         </div>
       </div>
-    </AppLayout>
   );
 };
 

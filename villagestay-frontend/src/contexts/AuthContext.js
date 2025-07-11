@@ -113,32 +113,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    try {
-      console.log('Logging out user'); // Debug log
-      
-      // Clear all authentication state
-      setUser(null);
-      setToken(null);
-      
-      // Remove token from cookies
-      Cookies.remove('token', { path: '/' });
-      
-      // Clear any other stored auth data
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        sessionStorage.clear();
-      }
-      
-      toast.success('Logged out successfully');
-      
-      console.log('Logout completed'); // Debug log
-      
-    } catch (error) {
-      console.error('Logout error:', error);
+const logout = () => {
+  try {
+    console.log('Logging out user'); // Debug log
+    
+    // Set a flag to prevent access denied messages during logout
+    if (typeof window !== 'undefined') {
+      window.isLoggingOut = true;
     }
-  };
+    
+    // Clear all authentication state FIRST
+    setUser(null);
+    setToken(null);
+    
+    // Remove token from cookies
+    Cookies.remove('token', { path: '/' });
+    
+    // Clear any other stored auth data
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      sessionStorage.clear();
+    }
+    
+    // Show success message
+    toast.success('Logged out successfully');
+    
+    // Redirect to home page immediately
+    if (typeof window !== 'undefined') {
+      // Clear the flag after a short delay
+      setTimeout(() => {
+        window.isLoggingOut = false;
+      }, 100);
+      
+      window.location.href = '/';
+    }
+    
+    console.log('Logout completed'); // Debug log
+    
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
 
   const updateProfile = async (profileData) => {
     try {

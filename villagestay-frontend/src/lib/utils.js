@@ -1,3 +1,4 @@
+// src/lib/utils.js
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -5,36 +6,62 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// Rest of your utility functions remain the same...
 export const formatCurrency = (amount, currency = 'INR') => {
-  if (currency === 'INR') {
-    return `₹${amount.toLocaleString('en-IN')}`;
+  // Handle null, undefined, or non-numeric values
+  if (amount === null || amount === undefined || isNaN(Number(amount))) {
+    return currency === 'INR' ? '₹0' : '0';
   }
-  return `${amount.toLocaleString()} ${currency}`;
+  
+  // Convert to number if it's a string
+  const numericAmount = Number(amount);
+  
+  if (currency === 'INR') {
+    return `₹${numericAmount.toLocaleString('en-IN')}`;
+  }
+  return `${numericAmount.toLocaleString()} ${currency}`;
 };
 
 export const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  if (!date) return 'Date not available';
+  
+  try {
+    return new Date(date).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch (error) {
+    return 'Invalid date';
+  }
 };
 
 export const formatDateShort = (date) => {
-  return new Date(date).toLocaleDateString('en-IN', {
-    month: 'short',
-    day: 'numeric',
-  });
+  if (!date) return 'N/A';
+  
+  try {
+    return new Date(date).toLocaleDateString('en-IN', {
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch (error) {
+    return 'N/A';
+  }
 };
 
 export const calculateNights = (checkIn, checkOut) => {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const diffTime = Math.abs(end - start);
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (!checkIn || !checkOut) return 0;
+  
+  try {
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  } catch (error) {
+    return 0;
+  }
 };
 
+// ... rest of your utility functions remain the same
 export const getPropertyTypeIcon = (type) => {
   const icons = {
     homestay: '🏠',
@@ -69,11 +96,13 @@ export const getAmenityIcon = (amenity) => {
 };
 
 export const truncateText = (text, maxLength = 100) => {
+  if (!text) return '';
   if (text.length <= maxLength) return text;
   return text.substr(0, maxLength) + '...';
 };
 
 export const generateSlug = (text) => {
+  if (!text) return '';
   return text
     .toLowerCase()
     .replace(/[^\w ]+/g, '')
@@ -104,7 +133,9 @@ export const scrollToTop = () => {
 };
 
 export const copyToClipboard = (text) => {
-  navigator.clipboard.writeText(text);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text);
+  }
 };
 
 export const shareContent = (title, text, url) => {
@@ -116,11 +147,13 @@ export const shareContent = (title, text, url) => {
 };
 
 export const validateEmail = (email) => {
+  if (!email) return false;
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);
 };
 
 export const validatePhone = (phone) => {
+  if (!phone) return false;
   const re = /^[+]?[\d\s-()]{10,}$/;
   return re.test(phone);
 };
@@ -140,6 +173,8 @@ export const getStatusColor = (status) => {
 };
 
 export const getRatingStars = (rating) => {
+  if (!rating || rating === 0) return '';
+  
   const stars = [];
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 !== 0;
@@ -156,20 +191,26 @@ export const getRatingStars = (rating) => {
 };
 
 export const getRelativeTime = (date) => {
-  const now = new Date();
-  const past = new Date(date);
-  const diffInMs = now - past;
-  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  if (!date) return 'Unknown time';
+  
+  try {
+    const now = new Date();
+    const past = new Date(date);
+    const diffInMs = now - past;
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minutes ago`;
-  } else if (diffInHours < 24) {
-    return `${diffInHours} hours ago`;
-  } else if (diffInDays < 7) {
-    return `${diffInDays} days ago`;
-  } else {
-    return formatDate(date);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minutes ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hours ago`;
+    } else if (diffInDays < 7) {
+      return `${diffInDays} days ago`;
+    } else {
+      return formatDate(date);
+    }
+  } catch (error) {
+    return 'Unknown time';
   }
 };
