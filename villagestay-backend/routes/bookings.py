@@ -5,8 +5,19 @@ from database import mongo
 from utils.payment_utils import create_payment, verify_payment
 from datetime import datetime, timedelta
 import math
+import uuid
+import string
+import random
 
 bookings_bp = Blueprint('bookings', __name__)
+
+# Add to bookings.py
+
+def generate_booking_reference():
+    """Generate unique booking reference"""
+    prefix = "VS"  # VillageStay prefix
+    random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"{prefix}{random_part}"
 
 @bookings_bp.route('/', methods=['POST'])
 @jwt_required()

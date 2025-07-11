@@ -173,6 +173,8 @@ def get_listing(listing_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# In your backend listings.py, make sure to handle the images properly:
+
 @listings_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_listing():
@@ -185,43 +187,38 @@ def create_listing():
         if not user or user['user_type'] != 'host':
             return jsonify({"error": "Only hosts can create listings"}), 403
         
-        # Required fields
-        required_fields = ['title', 'location', 'price_per_night', 'property_type', 'coordinates']
+        # Required fields validation
+        required_fields = ['title', 'location', 'price_per_night', 'property_type']
         for field in required_fields:
-            if field not in data:
+            if field not in data or not data[field]:
                 return jsonify({"error": f"{field} is required"}), 400
         
-        # Use AI to enhance listing content
-        ai_content = generate_listing_content(
-            data['title'],
-            data.get('description', ''),
-            data['location'],
-            data['property_type'],
-            data.get('amenities', [])
-        )
+        # Handle images - convert base64 to URLs or store as-is for now
+        images = data.get('images', [])
+        if not images:
+            return jsonify({"error": "At least one image is required"}), 400
         
         # Create listing document
         listing_doc = {
             "host_id": ObjectId(user_id),
             "title": data['title'],
-            "description": data.get('description', ai_content.get('description', '')),
+            "description": data.get('description', ''),
             "location": data['location'],
-            "price_per_night": data['price_per_night'],
+            "price_per_night": float(data['price_per_night']),
             "property_type": data['property_type'],
             "amenities": data.get('amenities', []),
-            "images": data.get('images', []),
-            "coordinates": data['coordinates'],
-            "max_guests": data.get('max_guests', 4),
+            "images": images,  # Store the image URLs/base64 data
+            "coordinates": data.get('coordinates', {"lat": 0, "lng": 0}),
+            "max_guests": int(data.get('max_guests', 4)),
             "house_rules": data.get('house_rules', []),
             "sustainability_features": data.get('sustainability_features', []),
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "is_active": True,
-            "is_approved": False,
+            "is_approved": False,  # Needs admin approval
             "rating": 0.0,
             "review_count": 0,
-            "availability_calendar": {},
-            "ai_generated_content": ai_content
+            "availability_calendar": {}
         }
         
         # Insert listing
@@ -229,12 +226,13 @@ def create_listing():
         
         return jsonify({
             "message": "Listing created successfully",
-            "listing_id": str(result.inserted_id),
-            "ai_suggestions": ai_content
+            "listing_id": str(result.inserted_id)
         }), 201
         
     except Exception as e:
+        print(f"Error creating listing: {str(e)}")  # Debug log
         return jsonify({"error": str(e)}), 500
+
 
 @listings_bp.route('/<listing_id>', methods=['PUT'])
 @jwt_required()
@@ -572,3 +570,4 @@ def format_review(review):
        },
        "created_at": review['created_at'].isoformat()
    }
+
