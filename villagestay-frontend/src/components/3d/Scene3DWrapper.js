@@ -1,30 +1,48 @@
 // src/components/3d/Scene3DWrapper.js
 'use client';
 
-import { Suspense, lazy } from 'react';
-import { motion } from 'framer-motion';
+import { Suspense, lazy, useState, useEffect } from 'react';
+import SimpleFallback from './SimpleFallback';
 
-// Lazy load the 3D scene to avoid SSR issues
-const Scene3D = lazy(() => import('./Scene3D'));
-
-const Scene3DFallback = () => (
-  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="text-center"
-    >
-      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <span className="text-white font-bold text-2xl">V</span>
-      </div>
-      <p className="text-gray-600">Loading 3D Experience...</p>
-    </motion.div>
-  </div>
+// Only attempt to load 3D scene if we're sure it's supported
+const Scene3D = lazy(() => 
+  import('./Scene3D').catch(error => {
+    console.warn('3D Scene failed to load:', error);
+    // Return a component that renders the fallback
+    return { default: SimpleFallback };
+  })
 );
 
 const Scene3DWrapper = () => {
+  const [isClient, setIsClient] = useState(false);
+  const [canRender3D, setCanRender3D] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    
+    // Check if WebGL is supported
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    
+    if (gl) {
+      setCanRender3D(true);
+    } else {
+      console.warn('WebGL not supported, using 2D fallback');
+    }
+  }, []);
+
+  // Don't render anything on server-side
+  if (!isClient) {
+    return <SimpleFallback />;
+  }
+
+  // If WebGL is not supported, use fallback
+  if (!canRender3D) {
+    return <SimpleFallback />;
+  }
+
   return (
-    <Suspense fallback={<Scene3DFallback />}>
+    <Suspense fallback={<SimpleFallback />}>
       <Scene3D />
     </Suspense>
   );

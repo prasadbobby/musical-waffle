@@ -30,16 +30,7 @@ import {
 // Dynamically import 3D scene with no SSR
 const Scene3DWrapper = dynamic(() => import('@/components/3d/Scene3DWrapper'), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
-      <div className="text-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-          <span className="text-white font-bold text-2xl">V</span>
-        </div>
-        <p className="text-gray-600">Loading 3D Experience...</p>
-      </div>
-    </div>
-  ),
+  loading: () => null, // Return null to avoid layout shift
 });
 
 const HomePage = () => {
@@ -158,16 +149,11 @@ const HomePage = () => {
 
         {/* Hero Section */}
         <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
-          {/* 3D Background - Only render on client */}
-          {isClient && (
-            <div className="absolute inset-0 z-0 opacity-60">
+          {/* 3D Background - Only render on client with proper fallback */}
+          <div className="absolute inset-0 z-0 opacity-60">
+            {isClient ? (
               <Scene3DWrapper />
-            </div>
-          )}
-
-          {/* Fallback Background for SSR */}
-          {!isClient && (
-            <div className="absolute inset-0 z-0">
+            ) : (
               <div className="w-full h-full bg-gradient-to-br from-blue-100 via-white to-green-100 flex items-center justify-center">
                 <motion.div
                   animate={{ 
@@ -182,9 +168,10 @@ const HomePage = () => {
                   className="w-32 h-32 bg-gradient-to-br from-blue-500 to-green-500 rounded-3xl opacity-20"
                 />
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
+          {/* Rest of your hero content remains the same... */}
           {/* Hero Content */}
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -349,6 +336,7 @@ const HomePage = () => {
           </motion.div>
         </section>
 
+        {/* Rest of your sections remain the same... */}
         {/* AI Features Section */}
         <section className="relative py-32 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
